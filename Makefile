@@ -1,5 +1,5 @@
 CC=gcc
-CFLAGS=-Iinclude -std=c99 -Wall -g
+CFLAGS=-Iinclude -std=c99 -Wall
 
-chip8: src/main.c
-	$(CC) $(CFLAGS) src/main.c -o bin/chip8
+chip8: src/main.c src/readFile.c
+	$(CC) $(CFLAGS) src/main.c src/readFile.c -o bin/chip8
