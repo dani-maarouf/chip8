@@ -534,17 +534,13 @@ void runLoop(struct chip8System chip8) {
         }
     
         int opcodeResult;
-        
-        do {
-            opcodeResult = processNextOpcode(&chip8);
-            if (opcodeResult == 0) {
-                running = false;
-                break;
-            }
-
-        } while (opcodeResult != 2);
        
-
+        opcodeResult = processNextOpcode(&chip8);
+        if (opcodeResult == 0) {
+            running = false;
+            break;
+        }
+       
         //fix this trash
         SDL_FillRect(chip8Monitor, &chip8Monitor->clip_rect, colour[0]);
         for (int x = 0; x < 32; x++) {
