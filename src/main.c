@@ -47,6 +47,7 @@ int processNextOpcode(struct chip8System * chip8) {
                         }
                     }
                     chip8->PC += 2;
+                    draw = true;
 
 
                 } else if (opcodeDigits[2] == 0xE && opcodeDigits[3] == 0xE) {
@@ -68,6 +69,10 @@ int processNextOpcode(struct chip8System * chip8) {
             break;
         }
         case 1:
+            if (opcodeDigits[1] * 0x100 + opcodeDigits[2] * 0x10 + opcodeDigits[3] == chip8->PC) {
+                return 0;
+            }
+
             chip8->PC = opcodeDigits[1] * 0x100 + opcodeDigits[2] * 0x10 + opcodeDigits[3];
             break;
             
@@ -303,6 +308,7 @@ int processNextOpcode(struct chip8System * chip8) {
                                 break;
                             }
                         }
+                        return 3;
                     }
                     break;
 
@@ -534,28 +540,40 @@ void runLoop(struct chip8System chip8) {
         }
     
         int opcodeResult;
-       
+
+        
         opcodeResult = processNextOpcode(&chip8);
+
         if (opcodeResult == 0) {
             running = false;
             break;
         }
-       
-        //fix this trash
-        SDL_FillRect(chip8Monitor, &chip8Monitor->clip_rect, colour[0]);
-        for (int x = 0; x < 32; x++) {
-            for (int y = 0; y < 64; y++) {
-                SDL_FillRect(chip8Monitor, &(pixels[x][y]), colour[chip8.display[x][y]]);
+        
+               
+        if (opcodeResult == 2) {
+
+            //fix this trash
+            SDL_FillRect(chip8Monitor, &chip8Monitor->clip_rect, colour[0]);
+            for (int x = 0; x < 32; x++) {
+                for (int y = 0; y < 64; y++) {
+                    SDL_FillRect(chip8Monitor, &(pixels[x][y]), colour[chip8.display[x][y]]);
+                }
             }
+            SDL_Flip(chip8Monitor);
         }
-        SDL_Flip(chip8Monitor);
 
         int frameTime = SDL_GetTicks() - startTime;
 
-        //wait for next frame
-        if (frameTime < 1000/FPS) {
-            SDL_Delay(1000/FPS - frameTime);
+        if (opcodeResult == 0) {
+            SDL_Delay(1000);
+        } else {
+            //wait for next frame
+            if (frameTime < 1000/FPS) {
+                SDL_Delay(1000/FPS - frameTime);
+            }
         }
+
+        //TODO: fix frame locking and input polling
 
     }
 
