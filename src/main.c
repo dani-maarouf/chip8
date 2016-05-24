@@ -5,7 +5,7 @@
 
 #include "chip8.h"
 
-#define FPS 120
+#define FPS 60
 
 int processNextOpcode(struct chip8System *);
 void runLoop(struct chip8System);
@@ -61,7 +61,6 @@ int processNextOpcode(struct chip8System * chip8) {
                     printf("Unrecognized opcode %x%x%x%x\n", opcodeDigits[0], 
                         opcodeDigits[1], opcodeDigits[2], opcodeDigits[3]);
                     return 0;
-                    break;
 
                 }
 
@@ -377,6 +376,145 @@ int processNextOpcode(struct chip8System * chip8) {
     }
 }
 
+int processEvents(struct chip8System * chip8) {
+
+    SDL_Event event;
+
+	while (SDL_PollEvent(&event)) {
+        switch(event.type) {
+            case SDL_QUIT: {
+                return 0;
+            }
+
+            case SDL_KEYDOWN: {
+                switch(event.key.keysym.sym) {
+
+                    case SDLK_1:
+                    chip8->key[0x1] = 1;
+                    break;
+                    case SDLK_2:
+                    chip8->key[0x2] = 1;
+                    break;
+                    case SDLK_3:
+                    chip8->key[0x3] = 1;
+                    break;
+                    case SDLK_4:
+                    chip8->key[0xC] = 1;
+                    break;
+
+                    case SDLK_q:
+                    chip8->key[0x4] = 1;
+                    break;
+                    case SDLK_w:
+                    chip8->key[0x5] = 1;
+                    break;
+                    case SDLK_e:
+                    chip8->key[0x6] = 1;
+                    break;
+                    case SDLK_r:
+                    chip8->key[0xD] = 1;
+                    break;
+
+                    case SDLK_a:
+                    chip8->key[0x7] = 1;
+                    break;
+                    case SDLK_s:
+                    chip8->key[0x8] = 1;
+                    break;
+                    case SDLK_d:
+                    chip8->key[0x9] = 1;
+                    break;
+                    case SDLK_f:
+                    chip8->key[0xE] = 1;
+                    break;
+
+                    case SDLK_z:
+                    chip8->key[0xA] = 1;
+                    break;
+                    case SDLK_x:
+                    chip8->key[0x0] = 1;
+                    break;
+                    case SDLK_c:
+                    chip8->key[0xB] = 1;
+                    break;
+                    case SDLK_v:
+                    chip8->key[0xF] = 1;
+                    break;
+
+                    default:
+                    break;
+                }
+                break;
+            }
+
+            case SDL_KEYUP: {
+               switch(event.key.keysym.sym) {
+
+                   case SDLK_1:
+                   chip8->key[0x1] = 0;
+                   break;
+                   case SDLK_2:
+                   chip8->key[0x2] = 0;
+                   break;
+                   case SDLK_3:
+                   chip8->key[0x3] = 0;
+                   break;
+                   case SDLK_4:
+                   chip8->key[0xC] = 0;
+                   break;
+
+                   case SDLK_q:
+                   chip8->key[0x4] = 0;
+                   break;
+                   case SDLK_w:
+                   chip8->key[0x5] = 0;
+                   break;
+                   case SDLK_e:
+                   chip8->key[0x6] = 0;
+                   break;
+                   case SDLK_r:
+                   chip8->key[0xD] = 0;
+                   break;
+
+                   case SDLK_a:
+                   chip8->key[0x7] = 0;
+                   break;
+                   case SDLK_s:
+                   chip8->key[0x8] = 0;
+                   break;
+                   case SDLK_d:
+                   chip8->key[0x9] = 0;
+                   break;
+                   case SDLK_f:
+                   chip8->key[0xE] = 0;
+                   break;
+
+                   case SDLK_z:
+                   chip8->key[0xA] = 0;
+                   break;
+                   case SDLK_x:
+                   chip8->key[0x0] = 0;
+                   break;
+                   case SDLK_c:
+                   chip8->key[0xB] = 0;
+                   break;
+                   case SDLK_v:
+                   chip8->key[0xF] = 0;
+                   break;
+
+                   default:
+                   break;
+               }
+               break;
+           }
+        }
+    }
+
+    return 1;
+
+
+}
+
 void runLoop(struct chip8System chip8) {
 
     SDL_Init(SDL_INIT_EVERYTHING);
@@ -403,156 +541,17 @@ void runLoop(struct chip8System chip8) {
     while (running) {
 
         startTime = SDL_GetTicks();
-        SDL_Event event;
-
-        while (SDL_PollEvent(&event)) {
-            switch(event.type) {
-                
-                case SDL_QUIT: {
-                    running = false;
-                    break;
-                }
-
-                case SDL_KEYDOWN: {
-                    switch(event.key.keysym.sym) {
-
-                        case SDLK_1:
-                            chip8.key[0x1] = 1;
-                            break;
-                        case SDLK_2:
-                            chip8.key[0x2] = 1;
-                            break;
-                        case SDLK_3:
-                            chip8.key[0x3] = 1;
-                            break;
-                        case SDLK_4:
-                            chip8.key[0xC] = 1;
-                            break;
-
-                        case SDLK_q:
-                            chip8.key[0x4] = 1;
-                            break;
-                        case SDLK_w:
-                            chip8.key[0x5] = 1;
-                            break;
-                        case SDLK_e:
-                            chip8.key[0x6] = 1;
-                            break;
-                        case SDLK_r:
-                            chip8.key[0xD] = 1;
-                            break;
-
-                        case SDLK_a:
-                            chip8.key[0x7] = 1;
-                            break;
-                        case SDLK_s:
-                            chip8.key[0x8] = 1;
-                            break;
-                        case SDLK_d:
-                            chip8.key[0x9] = 1;
-                            break;
-                        case SDLK_f:
-                            chip8.key[0xE] = 1;
-                            break;
-
-                        case SDLK_z:
-                            chip8.key[0xA] = 1;
-                            break;
-                        case SDLK_x:
-                            chip8.key[0x0] = 1;
-                            break;
-                        case SDLK_c:
-                            chip8.key[0xB] = 1;
-                            break;
-                        case SDLK_v:
-                            chip8.key[0xF] = 1;
-                            break;
-
-                        default:
-                            break;
-                    }
-                    break;
-                 }
-
-                case SDL_KEYUP: {
-                 switch(event.key.keysym.sym) {
-
-                     case SDLK_1:
-                         chip8.key[0x1] = 0;
-                         break;
-                     case SDLK_2:
-                         chip8.key[0x2] = 0;
-                         break;
-                     case SDLK_3:
-                         chip8.key[0x3] = 0;
-                         break;
-                     case SDLK_4:
-                         chip8.key[0xC] = 0;
-                         break;
-
-                     case SDLK_q:
-                         chip8.key[0x4] = 0;
-                         break;
-                     case SDLK_w:
-                         chip8.key[0x5] = 0;
-                         break;
-                     case SDLK_e:
-                         chip8.key[0x6] = 0;
-                         break;
-                     case SDLK_r:
-                         chip8.key[0xD] = 0;
-                         break;
-
-                     case SDLK_a:
-                         chip8.key[0x7] = 0;
-                         break;
-                     case SDLK_s:
-                         chip8.key[0x8] = 0;
-                         break;
-                     case SDLK_d:
-                         chip8.key[0x9] = 0;
-                         break;
-                     case SDLK_f:
-                         chip8.key[0xE] = 0;
-                         break;
-
-                     case SDLK_z:
-                         chip8.key[0xA] = 0;
-                         break;
-                     case SDLK_x:
-                         chip8.key[0x0] = 0;
-                         break;
-                     case SDLK_c:
-                         chip8.key[0xB] = 0;
-                         break;
-                     case SDLK_v:
-                         chip8.key[0xF] = 0;
-                         break;
-
-                     default:
-                         break;
-                 }
-                 break;
-              }
-
-
-            }
-        }
+        
+        int result;
+        result = processEvents(&chip8);
+        if (!result) break;
+        
     
         int opcodeResult;
-
-        
         opcodeResult = processNextOpcode(&chip8);
-
-        if (opcodeResult == 0) {
-            running = false;
-            break;
-        }
-        
-               
-        if (opcodeResult == 2) {
-
-            //fix this trash
+        if (opcodeResult == 0) break;
+         
+        if (opcodeResult == 2 || opcodeResult == 3) {
             SDL_FillRect(chip8Monitor, &chip8Monitor->clip_rect, colour[0]);
             for (int x = 0; x < 32; x++) {
                 for (int y = 0; y < 64; y++) {
@@ -566,14 +565,12 @@ void runLoop(struct chip8System chip8) {
 
         if (opcodeResult == 0) {
             SDL_Delay(1000);
-        } else {
+        } else if (opcodeResult == 2 || opcodeResult == 3) {
             //wait for next frame
             if (frameTime < 1000/FPS) {
                 SDL_Delay(1000/FPS - frameTime);
             }
         }
-
-        //TODO: fix frame locking and input polling
 
     }
 
