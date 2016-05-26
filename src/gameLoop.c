@@ -1,20 +1,28 @@
 #include <SDL/SDL.h>
-
 #include "chip8.h"
 
 #define FPS 60
 
 static int processEvents(struct chip8System *);
 
-void runLoop(struct chip8System chip8) {
+SDL_Surface * screen;
+SDL_Rect pixels[32][64];
+uint32_t colour[2];
 
-    //SDL init
-    SDL_Init(SDL_INIT_EVERYTHING);
-    SDL_Surface * chip8Monitor;
-    chip8Monitor = SDL_SetVideoMode(640, 320, 8, SDL_HWSURFACE);
+int initSDL() {
 
-    //SDL display
-    SDL_Rect pixels[32][64];
+    if (SDL_Init(SDL_INIT_EVERYTHING) == -1) {
+        return 0;
+    }
+
+    screen = SDL_SetVideoMode(640, 320, 8, SDL_SWSURFACE);
+
+    if (screen == NULL) {
+        return 0;
+    }
+
+    SDL_WM_SetCaption("chip8 emulator", NULL);
+
     for (int y = 0; y < 32; y++) {
         for (int x = 0; x < 64; x++) {
             pixels[y][x].x = x * 10;
@@ -23,8 +31,40 @@ void runLoop(struct chip8System chip8) {
             pixels[y][x].h = 10;
         }
     }
-    uint32_t colour[2] = {SDL_MapRGB(chip8Monitor->format, 0x0, 0x0, 0x0), 
-        SDL_MapRGB(chip8Monitor->format, 0xFF, 0xFF, 0xFF)};
+
+    colour[0] = SDL_MapRGB(screen->format, 0x0, 0x0, 0x0);
+    colour[1] = SDL_MapRGB(screen->format, 0xFF, 0xFF, 0xFF);
+
+    return 1;
+
+}
+
+void draw(struct chip8System chip8) {
+
+    for (int x = 0; x < 32; x++) {
+        for (int y = 0; y < 64; y++) {
+            if (chip8.display[x][y]) {
+                SDL_FillRect(screen, &(pixels[x][y]), colour[1]);
+            } else {
+                SDL_FillRect(screen, &(pixels[x][y]), colour[0]);
+            }
+
+        }
+    }
+    SDL_Flip(screen);
+
+    return;
+
+}
+
+void runLoop(struct chip8System chip8) {
+
+    if (!initSDL()) {
+        SDL_Quit();
+        return;
+    }
+
+    SDL_FillRect(screen, &screen->clip_rect, colour[0]);
 
     int startTime;
     startTime = SDL_GetTicks();
@@ -47,31 +87,24 @@ void runLoop(struct chip8System chip8) {
         if (opcodeResult == 0) break;
         else if (opcodeResult == 1) continue;
 
-
-         
         //draw
         if (opcodeResult == 2 || opcodeResult == 3) {
             if (opcodeResult == 2) {
-                SDL_FillRect(chip8Monitor, &chip8Monitor->clip_rect, colour[0]);
-                for (int x = 0; x < 32; x++) {
-                    for (int y = 0; y < 64; y++) {
-                        SDL_FillRect(chip8Monitor, &(pixels[x][y]), colour[chip8.display[x][y]]);
-                    }
-                }
-                SDL_Flip(chip8Monitor);
+                draw(chip8);
             }
 
             int frameTime = SDL_GetTicks() - startTime;
             if (frameTime < 1000/FPS) {
                 SDL_Delay(1000/FPS - frameTime);
             }
+
             decrementC8Counters(&chip8);
             startTime = SDL_GetTicks();
         }
     }
 
 
-
+    SDL_FreeSurface(screen);
     SDL_Quit();
     return;
 }
@@ -204,3 +237,4 @@ static int processEvents(struct chip8System * chip8) {
 
     return 1;
 }
+

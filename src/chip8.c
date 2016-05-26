@@ -6,40 +6,48 @@
 static int readFile(const char *, uint8_t *, int);
 static void readSpritesIntoRAM(uint8_t *, int);
 
-struct chip8System chip8Init(char * fileLoc, int startPC, int startSprites) {
+struct chip8System * chip8Init(char * fileLoc, int startPC, int startSprites) {
 
+    if (fileLoc == NULL) {
+        return NULL;
+    }
 
+    struct chip8System * chip8Sys;
+    chip8Sys = malloc(sizeof(struct chip8System));
 
-    struct chip8System chip8Sys;
+    if (chip8Sys == NULL) {
+        return NULL;
+    }
 
-    for (int x = 0; x < 0x1000; x++) chip8Sys.RAM[x] = 0x0;
+    for (int x = 0; x < 0x1000; x++) chip8Sys->RAM[x] = 0x0;
 
     for (int x = 0; x < 16; x++) {
-        chip8Sys.V[x] = 0x0;
-        chip8Sys.stack[x] = 0x0;
-        chip8Sys.key[x] = false;
+        chip8Sys->V[x] = 0x0;
+        chip8Sys->stack[x] = 0x0;
+        chip8Sys->key[x] = false;
     }
 
     for (int x = 0; x < 32; x++) {
         for (int y = 0; y < 64; y++) {
-            chip8Sys.display[x][y] = false;
+            chip8Sys->display[x][y] = false;
         }
     }
 
-    chip8Sys.I = 0x0;
-    chip8Sys.DT = 0x0;
-    chip8Sys.ST = 0x0;
-    chip8Sys.PC = startPC;
-    chip8Sys.SP = 0x0;
+    chip8Sys->I = 0x0;
+    chip8Sys->DT = 0x0;
+    chip8Sys->ST = 0x0;
+    chip8Sys->PC = startPC;
+    chip8Sys->SP = 0x0;
 
     int readResult;
-    readResult = readFile(fileLoc, chip8Sys.RAM, chip8Sys.PC);
+    readResult = readFile(fileLoc, chip8Sys->RAM, chip8Sys->PC);
 
     if (!readResult) {
-         
+        free(chip8Sys);
+        return NULL;
     }
 
-    readSpritesIntoRAM(chip8Sys.RAM, startSprites);
+    readSpritesIntoRAM(chip8Sys->RAM, startSprites);
 
     return chip8Sys;
 
@@ -47,15 +55,10 @@ struct chip8System chip8Init(char * fileLoc, int startPC, int startSprites) {
 
 void decrementC8Counters(struct chip8System * chip8) {
 
-    if (chip8->DT != 0) {
-        chip8->DT -= 1;
-    }
-    if (chip8->ST != 0) {
-        chip8->ST -= 1;
-    }
-
-    return;
+    if (chip8->DT != 0) chip8->DT -= 1;
+    if (chip8->ST != 0) chip8->ST -= 1;
     
+    return;
 }
 
 int processNextOpcode(struct chip8System * chip8) {
@@ -407,14 +410,12 @@ int processNextOpcode(struct chip8System * chip8) {
 static int readFile(const char * fileLocation, uint8_t * RAM, int startLoc) {
 
     if (fileLocation == NULL) {
-        perror("readFile() -> Error: File location string is NULL\n");
         return 0;
     }
 
     FILE * romFile;
     romFile = fopen(fileLocation, "rb");
     if (romFile == NULL) {
-        perror("readFile() -> Error: Could not open ROM file\n");
         return 0;
     }
 
@@ -449,11 +450,8 @@ static void readSpritesIntoRAM(uint8_t * RAM, int start) {
                                 0xF0, 0x80, 0xF0, 0x80, 0xF0,
                                 0xF0, 0x80, 0xF0, 0x80, 0x80};
 
-    for (int x = 0; x < 80; x++) {
-        RAM[x + start] = sprites[x];
-    }
+    for (int x = 0; x < 80; x++) RAM[x + start] = sprites[x];
 
     return;
 }
-
 
