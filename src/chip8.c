@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h>
 
 #include "chip8.h"
 
@@ -6,6 +7,8 @@ static int readFile(const char *, uint8_t *, int);
 static void readSpritesIntoRAM(uint8_t *, int);
 
 struct chip8System chip8Init(char * fileLoc, int startPC, int startSprites) {
+
+
 
     struct chip8System chip8Sys;
 
@@ -33,14 +36,372 @@ struct chip8System chip8Init(char * fileLoc, int startPC, int startSprites) {
     readResult = readFile(fileLoc, chip8Sys.RAM, chip8Sys.PC);
 
     if (!readResult) {
-
-        
+         
     }
 
     readSpritesIntoRAM(chip8Sys.RAM, startSprites);
 
     return chip8Sys;
 
+}
+
+void decrementC8Counters(struct chip8System * chip8) {
+
+    if (chip8->DT != 0) {
+        chip8->DT -= 1;
+    }
+    if (chip8->ST != 0) {
+        chip8->ST -= 1;
+    }
+
+    return;
+    
+}
+
+int processNextOpcode(struct chip8System * chip8) {
+
+    int opcodeDigits[4] = {chip8->RAM[chip8->PC] / 16, chip8->RAM[chip8->PC] % 16,
+                                chip8->RAM[chip8->PC + 1] / 16, chip8->RAM[chip8->PC + 1] % 16};
+    bool draw = false;
+
+    switch (opcodeDigits[0]) {
+        case 0: {
+
+            if (opcodeDigits[1]) {
+               printf("Illegal opcode 0NNN\n");
+            } else {
+
+                if (opcodeDigits[2] == 0xE && opcodeDigits[3] == 0x0) {
+
+                    for (int x = 0; x < 32; x++) {
+                        for (int y = 0; y < 64; y++) {
+                            chip8->display[x][y] = false;
+                        }
+                    }
+                    chip8->PC += 2;
+                    draw = true;
+
+
+                } else if (opcodeDigits[2] == 0xE && opcodeDigits[3] == 0xE) {
+                   
+                   chip8->SP -= 1;
+                   chip8->PC = chip8->stack[chip8->SP];
+                   chip8->PC += 2;
+                    
+                } else {
+                    
+                    printf("Unrecognized opcode %x%x%x%x\n", opcodeDigits[0], 
+                        opcodeDigits[1], opcodeDigits[2], opcodeDigits[3]);
+                    return 0;
+
+                }
+
+            }
+            break;
+        }
+        case 1:
+            if (opcodeDigits[1] * 0x100 + opcodeDigits[2] * 0x10 + opcodeDigits[3] == chip8->PC) {
+                return 0;
+            }
+
+            chip8->PC = opcodeDigits[1] * 0x100 + opcodeDigits[2] * 0x10 + opcodeDigits[3];
+            break;
+            
+        case 2:
+
+            chip8->stack[chip8->SP] = chip8->PC;
+            chip8->SP += 1;
+            chip8->PC = opcodeDigits[1] * 0x100 + opcodeDigits[2] * 0x10 + opcodeDigits[3];
+            
+            break;
+
+        case 3:
+
+            if (chip8->V[opcodeDigits[1]] == opcodeDigits[2] * 0x10 + opcodeDigits[3]) {
+                chip8->PC += 4;
+            } else {
+                chip8->PC += 2;
+            }
+            break;
+
+        case 4:
+
+            if (chip8->V[opcodeDigits[1]] != opcodeDigits[2] * 0x10 + opcodeDigits[3]) {
+                chip8->PC += 4;
+            } else {
+                chip8->PC += 2;
+            }
+
+            break;
+
+        case 5:
+
+            if (chip8->V[opcodeDigits[1]] == chip8->V[opcodeDigits[2]]) {
+                chip8->PC += 4;
+            } else {
+                chip8->PC += 2;
+            }
+
+            break;
+
+        case 6:
+
+            chip8->V[opcodeDigits[1]] = opcodeDigits[2] * 0x10 + opcodeDigits[3];
+            chip8->PC += 2;
+            break;
+
+        case 7:
+
+            chip8->V[opcodeDigits[1]] += opcodeDigits[2] * 0x10 + opcodeDigits[3];
+            chip8->PC += 2;
+            break;
+
+        case 8: {
+
+            switch(opcodeDigits[3]) {
+
+                case 0:
+                    chip8->V[opcodeDigits[1]] = chip8->V[opcodeDigits[2]];
+                    chip8->PC += 2;
+                    break;
+                case 1:
+                    chip8->V[opcodeDigits[1]] |= chip8->V[opcodeDigits[2]];
+                    chip8->PC += 2;
+                    break;
+
+                case 2:
+                    chip8->V[opcodeDigits[1]] &= chip8->V[opcodeDigits[2]];
+                    chip8->PC += 2;
+                    break;
+
+                case 3:
+                    chip8->V[opcodeDigits[1]] ^= chip8->V[opcodeDigits[2]];
+                    chip8->PC += 2;
+                    break;
+
+                case 4: {
+
+                    unsigned int result;
+                    result = (int) chip8->V[opcodeDigits[1]] + (int) chip8->V[opcodeDigits[2]];
+                    if (result >= 0x100) {
+                        chip8->V[0xF] = 1;
+                        chip8->V[opcodeDigits[1]] = (result - 256);
+                    } else {
+                        chip8->V[0xF] = 0;
+                        chip8->V[opcodeDigits[1]] = result;
+                    }
+                    chip8->PC += 2;
+                    break;
+                }
+                case 5: {
+
+                    int result;
+                    result = (int) chip8->V[opcodeDigits[1]] - (int) chip8->V[opcodeDigits[2]];
+
+                    if (result >= 0) {
+                        chip8->V[0xF] = 1;
+                        chip8->V[opcodeDigits[1]] = result;
+                    } else {
+                        chip8->V[0xF] = 0;
+                        chip8->V[opcodeDigits[1]] = 256 + result;
+                    }
+                    chip8->PC += 2;
+                    break;
+                }
+                case 6:
+                    
+                    chip8->V[0xF] = chip8->V[opcodeDigits[1]] & 1;
+                    chip8->V[opcodeDigits[1]] = chip8->V[opcodeDigits[1]] >> 1;
+                    chip8->PC += 2;
+                    break;
+
+                case 7: {
+
+                    int result = (int) chip8->V[opcodeDigits[2]] - (int) chip8->V[opcodeDigits[1]];
+
+                    if (result >= 0) {
+                        chip8->V[0xF] = 0;
+                        chip8->V[opcodeDigits[1]] = result;
+                    } else {
+                        chip8->V[0xF] = 1;
+                        chip8->V[opcodeDigits[1]] = result + 256;
+                    }
+                    chip8->PC += 2;
+                    
+                    break;
+                }
+                case 0xE:
+
+                    chip8->V[0xF] = chip8->V[opcodeDigits[1]] / 128;
+                    chip8->V[opcodeDigits[1]] *= 2;
+                    chip8->PC += 2;
+                    break;
+            }
+
+            break;
+        }
+
+        case 9:
+
+            if (chip8->V[opcodeDigits[1]] != chip8->V[opcodeDigits[2]]) {
+                chip8->PC += 4;
+            } else {
+                chip8->PC += 2;
+            }
+            break;
+
+        case 0xA:
+            chip8->I = (opcodeDigits[1] * 0x100) + (opcodeDigits[2] * 0x10) + opcodeDigits[3];
+            chip8->PC += 2;
+            break;
+
+        case 0xB:
+
+            chip8->PC = opcodeDigits[1] * 0x100 + opcodeDigits[2] * 0x10 + opcodeDigits[3] + chip8->V[0];
+            break;
+
+        case 0xC: {
+
+            uint8_t randomNum;
+            randomNum = rand() % 256;
+
+            chip8->V[opcodeDigits[1]] = (opcodeDigits[2] * 0x10 + opcodeDigits[3]) & randomNum;
+            chip8->PC += 2;
+
+            break;
+        }
+        case 0xD:
+
+            for (int i = 0; i < opcodeDigits[3]; i++) {
+
+                
+                unsigned int spriteRow = chip8->RAM[chip8->I + i];
+
+                chip8->V[0xF] = 0;
+
+                for (int j = 0; j < 8; j++) {
+                    if ((spriteRow & (0x80 >> j)) != 0) {
+                        
+                        int yPos = chip8->V[opcodeDigits[2]];
+                        int xPos = chip8->V[opcodeDigits[1]];
+
+                        if (chip8->display[yPos + i][xPos + j] == 1) {
+                            chip8->V[0xF] = 1;
+                        }
+
+                        chip8->display[yPos + i][xPos + j] ^= 1;
+
+                    }
+
+                }
+                
+            }
+            draw = true;
+            chip8->PC += 2;
+            break;
+
+        case 0xE:
+
+            if (opcodeDigits[2] == 0x9) {
+                
+                if (chip8->key[chip8->V[opcodeDigits[1]]]) {
+                    chip8->PC += 4;
+                } else {
+                    chip8->PC += 2;
+                }
+
+            } else if (opcodeDigits[2] == 0xA) {
+
+                if (!chip8->key[chip8->V[opcodeDigits[1]]]) {
+                    chip8->PC += 4;
+                } else {
+                    chip8->PC += 2;
+                }
+
+            }
+            break;
+
+        case 0XF:
+
+            switch(opcodeDigits[2]) {
+
+                case 0:
+
+                    if (opcodeDigits[3] == 7) {
+                        chip8->V[opcodeDigits[1]] = chip8->DT;
+                        chip8->PC += 2;
+                    } else if (opcodeDigits[3] == 0xA) {
+
+                        for (int x = 0; x < 0x10; x++) {
+                            if (chip8->key[x]) {
+                                chip8->V[opcodeDigits[1]] = x;
+                                chip8->PC += 2;
+                                break;
+                            }
+                        }
+                        return 3;
+                    }
+                    break;
+
+                case 1:
+                    if (opcodeDigits[3] == 5) {
+                        chip8->DT = chip8->V[opcodeDigits[1]];
+                    } else if (opcodeDigits[3] == 8) {
+                        chip8->ST = chip8->V[opcodeDigits[1]];
+                    } else if (opcodeDigits[3] == 0xE) {
+                        chip8->I += chip8->V[opcodeDigits[1]];
+                    }
+                    chip8->PC += 2;
+                    break;
+
+                case 2:
+                    
+                    chip8->I = 0x50 + (chip8->V[opcodeDigits[1]] * 5);
+                    chip8->PC += 2;
+                    break;
+
+                case 3:
+ 
+                    chip8->RAM[chip8->I] = chip8->V[opcodeDigits[1]] / 100;
+                    chip8->RAM[chip8->I + 1] = (chip8->V[opcodeDigits[1]] / 10) % 10;
+                    chip8->RAM[chip8->I + 2] = chip8->V[opcodeDigits[1]] % 10;
+
+                    chip8->PC += 2;
+                    break;
+                case 5:
+
+                    for (int x = 0; x <= opcodeDigits[1]; x++) {
+                        chip8->RAM[chip8->I + x] = chip8->V[x];
+                    }
+                    chip8->PC += 2;
+                    break;
+
+                case 6:
+                    for (int x = 0; x <= opcodeDigits[1]; x++) {
+                        chip8->V[x] = chip8->RAM[chip8->I + x];
+                    }
+                    chip8->PC += 2;
+                    break;
+            }
+
+            break;
+
+        default:
+            printf("ERROR: Unrecognized opcode %x%x%x%x\n", opcodeDigits[0], 
+                    opcodeDigits[1], opcodeDigits[2], opcodeDigits[3]);
+            break;
+    }
+
+    //printf("Executed opcode %x%x%x%x, PC:%x, I:%x, SP:%x\n", opcodeDigits[0], opcodeDigits[1], opcodeDigits[2], opcodeDigits[3], chip8->PC, chip8->I, chip8->SP);
+    //getchar();
+
+    //decrementC8Counters(chip8);
+
+    if (draw) {
+        return 2;
+    } else {
+        return 1;
+    }
 }
 
 static int readFile(const char * fileLocation, uint8_t * RAM, int startLoc) {
