@@ -1,7 +1,7 @@
 #include <SDL/SDL.h>
 #include "chip8.h"
 
-#define FPS 60
+#define FPS 240
 
 static int processEvents(struct chip8System *);
 
@@ -15,7 +15,7 @@ int initSDL() {
         return 0;
     }
 
-    screen = SDL_SetVideoMode(640, 320, 8, SDL_SWSURFACE);
+    screen = SDL_SetVideoMode(640, 320, 8, SDL_DOUBLEBUF);
 
     if (screen == NULL) {
         return 0;

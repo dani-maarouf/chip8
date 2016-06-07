@@ -104,9 +104,9 @@ int processNextOpcode(struct chip8System * chip8) {
         }
         case 1:
             if (opcodeDigits[1] * 0x100 + opcodeDigits[2] * 0x10 + opcodeDigits[3] == chip8->PC) {
+                //endless loop
                 return 0;
             }
-
             chip8->PC = opcodeDigits[1] * 0x100 + opcodeDigits[2] * 0x10 + opcodeDigits[3];
             break;
             
@@ -115,7 +115,6 @@ int processNextOpcode(struct chip8System * chip8) {
             chip8->stack[chip8->SP] = chip8->PC;
             chip8->SP += 1;
             chip8->PC = opcodeDigits[1] * 0x100 + opcodeDigits[2] * 0x10 + opcodeDigits[3];
-            
             break;
 
         case 3:
@@ -134,7 +133,6 @@ int processNextOpcode(struct chip8System * chip8) {
             } else {
                 chip8->PC += 2;
             }
-
             break;
 
         case 5:
@@ -144,7 +142,6 @@ int processNextOpcode(struct chip8System * chip8) {
             } else {
                 chip8->PC += 2;
             }
-
             break;
 
         case 6:
@@ -277,7 +274,6 @@ int processNextOpcode(struct chip8System * chip8) {
 
             for (int i = 0; i < opcodeDigits[3]; i++) {
 
-                
                 unsigned int spriteRow = chip8->RAM[chip8->I + i];
 
                 chip8->V[0xF] = 0;
@@ -293,17 +289,16 @@ int processNextOpcode(struct chip8System * chip8) {
                         }
 
                         chip8->display[yPos + i][xPos + j] ^= 1;
-
                     }
-
                 }
-                
             }
             draw = true;
             chip8->PC += 2;
             break;
 
         case 0xE:
+
+
 
             if (opcodeDigits[2] == 0x9) {
                 
@@ -390,15 +385,13 @@ int processNextOpcode(struct chip8System * chip8) {
             break;
 
         default:
-            printf("ERROR: Unrecognized opcode %x%x%x%x\n", opcodeDigits[0], 
+            printf("Warning: Unrecognized opcode %x%x%x%x\n", opcodeDigits[0], 
                     opcodeDigits[1], opcodeDigits[2], opcodeDigits[3]);
             break;
     }
 
-    //printf("Executed opcode %x%x%x%x, PC:%x, I:%x, SP:%x\n", opcodeDigits[0], opcodeDigits[1], opcodeDigits[2], opcodeDigits[3], chip8->PC, chip8->I, chip8->SP);
-    //getchar();
-
-    //decrementC8Counters(chip8);
+    //printf("Executed opcode %x%x%x%x, PC:%x, I:%x, SP:%x\n", opcodeDigits[0], opcodeDigits[1], 
+    //				opcodeDigits[2], opcodeDigits[3], chip8->PC, chip8->I, chip8->SP);
 
     if (draw) {
         return 2;
