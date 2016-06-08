@@ -45,7 +45,10 @@ void runLoop(struct chip8System chip8, const char * fileLoc) {
         //next instruction
         int opcodeResult;
         opcodeResult = processNextOpcode(&chip8);
-        if (opcodeResult == 0) break;
+        if (opcodeResult == 0) {
+            SDL_Delay(1000);
+            break;
+        }
         else if (opcodeResult == 1) continue;
 
         //draw
