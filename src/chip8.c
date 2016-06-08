@@ -1,6 +1,5 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 
 #include "chip8.h"
 
@@ -37,7 +36,9 @@ struct chip8System * chip8Init(char * fileLoc, int startPC, int startSprites) {
         return NULL;
     }
 
-    memset(chip8Sys->display, 0, 64 * 32 * sizeof(uint32_t));
+    for (int x = 0; x < 32 * 64; x++) {
+        chip8Sys->display[x] = 0;
+    }
 
     chip8Sys->I = 0x0;
     chip8Sys->DT = 0x0;
@@ -73,6 +74,14 @@ int processNextOpcode(struct chip8System * chip8) {
                                 chip8->RAM[chip8->PC + 1] / 16, chip8->RAM[chip8->PC + 1] % 16};
     bool draw = false;
 
+    printf("Executed opcode %x%x%x%x, PC:%x, I:%x, SP:%x ", opcodeDigits[0], opcodeDigits[1], 
+                    opcodeDigits[2], opcodeDigits[3], chip8->PC, chip8->I, chip8->SP);
+
+    for (int x = 0; x < 16; x++) {
+        printf("V%x: %x ", x, chip8->V[x]);
+    }
+    printf("\n");
+
     switch (opcodeDigits[0]) {
         case 0: {
 
@@ -82,7 +91,9 @@ int processNextOpcode(struct chip8System * chip8) {
 
                 if (opcodeDigits[2] == 0xE && opcodeDigits[3] == 0x0) {
 
-                    memset(chip8->display, 0, 64 * 32 * sizeof(uint32_t));
+                    for (int i = 0; i < 32 * 64; i++) {
+                        chip8->display[i] = 0;
+                    }
 
                     chip8->PC += 2;
                     draw = true;
@@ -286,9 +297,9 @@ int processNextOpcode(struct chip8System * chip8) {
                         int xPos = chip8->V[opcodeDigits[1]];
 
                         int pixelLocation;
-                        pixelLocation = (yPos + i) * 64 + xPos + j;
+                        pixelLocation = ((yPos + i) * 64 + xPos + j) % (64 * 32);
 
-                        if (chip8->display[pixelLocation] == 1) {
+                        if (chip8->display[pixelLocation] != 0) {
                             chip8->V[0xF] = 1;
                         }
 
@@ -355,7 +366,7 @@ int processNextOpcode(struct chip8System * chip8) {
                     } else if (opcodeDigits[3] == 8) {
                         chip8->ST = chip8->V[opcodeDigits[1]];
                     } else if (opcodeDigits[3] == 0xE) {
-                        chip8->I += chip8->V[opcodeDigits[1]];
+                        chip8->I = (chip8->V[opcodeDigits[1]] + chip8->I) & 0xFFFF;
                     }
                     chip8->PC += 2;
                     break;
@@ -366,14 +377,15 @@ int processNextOpcode(struct chip8System * chip8) {
                     chip8->PC += 2;
                     break;
 
-                case 3:
- 
+                case 3: {
+
                     chip8->RAM[chip8->I] = chip8->V[opcodeDigits[1]] / 100;
-                    chip8->RAM[chip8->I + 1] = (chip8->V[opcodeDigits[1]] / 10) % 10;
+                    chip8->RAM[chip8->I + 1] = ((chip8->V[opcodeDigits[1]]) % 100) / 10;
                     chip8->RAM[chip8->I + 2] = chip8->V[opcodeDigits[1]] % 10;
 
                     chip8->PC += 2;
                     break;
+                }
                 case 5:
 
                     for (int x = 0; x <= opcodeDigits[1]; x++) {
@@ -397,9 +409,6 @@ int processNextOpcode(struct chip8System * chip8) {
                     opcodeDigits[1], opcodeDigits[2], opcodeDigits[3]);
             break;
     }
-
-    //printf("Executed opcode %x%x%x%x, PC:%x, I:%x, SP:%x\n", opcodeDigits[0], opcodeDigits[1], 
-    //				opcodeDigits[2], opcodeDigits[3], chip8->PC, chip8->I, chip8->SP);
 
     if (draw) {
         return 2;
@@ -455,4 +464,3 @@ static void readSpritesIntoRAM(uint8_t * RAM, int start) {
 
     return;
 }
-

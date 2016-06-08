@@ -22,6 +22,7 @@ int main (int argc, char ** argv) {
     }
 
     runLoop(*chip8, argv[1]);
+    free(chip8->display);
     free(chip8);
 
     return 0;
