@@ -2,35 +2,40 @@
 #include <string.h>
 #include "chip8.h"
 
-const int FPS = 60;
-const int SCALE_FACTOR = 10;
+//static const int FPS = 60;
+static const int FRAME_TIME = 1000/60;
+static const int SCALE_FACTOR = 10;
 
 static int processEvents(bool *, SDL_Event *, int (*func)(SDL_Event *));
 static int initSDL(const char *);
 static void closeSDL();
+static void draw(uint32_t * pixels);
 
 SDL_Window * window = NULL;
 SDL_Renderer * renderer = NULL;
 SDL_Texture * texture = NULL;
 
+
 void runLoop(struct chip8System chip8, const char * fileLoc) {
 
     if (!initSDL(fileLoc)) {
+        fprintf(stderr, "Could not initialize SDL : %s\n", SDL_GetError());
         SDL_Quit();
         return;
     }
 
-    SDL_UpdateTexture(texture, NULL, chip8.display, 64 * sizeof(uint32_t));
-    SDL_RenderClear(renderer);
-    SDL_RenderCopy(renderer, texture, NULL, NULL);
-    SDL_RenderPresent(renderer);
-
     int startTime;
+    bool waitInput;
+
     startTime = SDL_GetTicks();
+    waitInput = false;
+
+    draw(chip8.display);
 
     while (true) {
 
-        if (SDL_GetTicks() - startTime >= 1000/FPS) {
+        //decrement counters at appropriate FPS
+        if (SDL_GetTicks() - startTime >= FRAME_TIME) {
             decrementC8Counters(&chip8);
             startTime = SDL_GetTicks();
         }
@@ -39,8 +44,13 @@ void runLoop(struct chip8System chip8, const char * fileLoc) {
 
         //process events
         int result;
-        result = processEvents(chip8.key, &event, SDL_PollEvent);
+        if (!waitInput) {
+            result = processEvents(chip8.key, &event, SDL_PollEvent);
+        } else {
+            result = processEvents(chip8.key, &event, SDL_WaitEvent);
+        }
         if (!result) break;
+        waitInput = false;
         
         //next instruction
         int opcodeResult;
@@ -51,41 +61,46 @@ void runLoop(struct chip8System chip8, const char * fileLoc) {
         }
         else if (opcodeResult == 1) continue;
 
-        //draw
-        if (opcodeResult == 2 || opcodeResult == 3) {
-            SDL_UpdateTexture(texture, NULL, chip8.display, 64 * sizeof(uint32_t));
-            SDL_RenderClear(renderer);
-            SDL_RenderCopy(renderer, texture, NULL, NULL);
-            SDL_RenderPresent(renderer);
-            int frameTime = SDL_GetTicks() - startTime;
-            if (frameTime < 1000/FPS) {
-                SDL_Delay(1000/FPS - frameTime);
-            }
-            decrementC8Counters(&chip8);
-            startTime = SDL_GetTicks();
-        } else if (opcodeResult == 3) {
-            result = processEvents(chip8.key, &event, SDL_WaitEvent);
-        }
+        if (opcodeResult == 2) {
 
+            draw(chip8.display);
+
+            int frameTime = SDL_GetTicks() - startTime;
+            if (frameTime < FRAME_TIME) {
+                SDL_Delay(FRAME_TIME - frameTime);
+            }
+            startTime = SDL_GetTicks();
+
+            decrementC8Counters(&chip8);
+            
+        } else if (opcodeResult == 3) {
+            waitInput = true;
+        }
     }
 
     closeSDL();
     return;
 }
 
-int initSDL(const char * fileLoc) {
+inline static void draw(uint32_t * pixels) {
+    SDL_UpdateTexture(texture, NULL, pixels, C8_WIDTH * sizeof(uint32_t));
+    SDL_RenderClear(renderer);
+    SDL_RenderCopy(renderer, texture, NULL, NULL);
+    SDL_RenderPresent(renderer);
+}
+
+static int initSDL(const char * fileLoc) {
 
     if (SDL_Init(SDL_INIT_VIDEO) < 0) {
         return 0;
     }
 
     char windowTitle[100];
-    strcpy(windowTitle, "chip8 emulator : ");
+    strcpy(windowTitle, "chip8 : ");
     strcat(windowTitle, fileLoc);
 
-
     window = SDL_CreateWindow(windowTitle, SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
-        64 * SCALE_FACTOR, 32 * SCALE_FACTOR, 0);
+        C8_WIDTH * SCALE_FACTOR, C8_HEIGHT * SCALE_FACTOR, 0);
 
     if (window == NULL) {
         SDL_Quit();
@@ -95,14 +110,17 @@ int initSDL(const char * fileLoc) {
     renderer = SDL_CreateRenderer(window, -1, 0);
 
     if (renderer == NULL) {
+        SDL_DestroyWindow(window);
         SDL_Quit();
         return 0;
     }
 
     texture = SDL_CreateTexture(renderer,
-        SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STATIC, 64, 32);
+        SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STATIC, C8_WIDTH, C8_HEIGHT);
 
     if (texture == NULL) {
+        SDL_DestroyRenderer(renderer);
+        SDL_DestroyWindow(window);
         SDL_Quit();
         return 0;
     }
@@ -240,12 +258,18 @@ static int processEvents(bool * key, SDL_Event * event, int (*func)(SDL_Event *)
     return 1;
 }
 
-void closeSDL() {
-    SDL_DestroyTexture(texture);
-    SDL_DestroyRenderer(renderer);
-    SDL_DestroyWindow(window);
+static void closeSDL() {
 
-    //destroy
+    if (texture != NULL) {
+        SDL_DestroyTexture(texture);
+    }
+    if (renderer != NULL) {
+        SDL_DestroyRenderer(renderer);
+    }
+    if (window != NULL) {
+        SDL_DestroyWindow(window);
+    }
+
     SDL_Quit();
 
     return;

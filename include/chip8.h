@@ -4,6 +4,9 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+static const int C8_WIDTH = 64;
+static const int C8_HEIGHT = 32; 
+
 struct chip8System {
 
     uint8_t RAM[0x1000];

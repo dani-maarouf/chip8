@@ -3,7 +3,7 @@
 
 #include "chip8.h"
 
-#define MAX_INT 4294967295
+const int MAX_INT = 4294967295;
 
 static int readFile(const char *, uint8_t *, int);
 static void readSpritesIntoRAM(uint8_t *, int);
@@ -29,14 +29,14 @@ struct chip8System * chip8Init(char * fileLoc, int startPC, int startSprites) {
         chip8Sys->key[x] = false;
     }
 
-    chip8Sys->display = malloc(sizeof(uint32_t) * 64 * 32);
+    chip8Sys->display = malloc(sizeof(uint32_t) * C8_WIDTH * C8_HEIGHT);
 
     if (chip8Sys->display == NULL) {
         free(chip8Sys);
         return NULL;
     }
 
-    for (int x = 0; x < 32 * 64; x++) {
+    for (int x = 0; x < C8_WIDTH * C8_HEIGHT; x++) {
         chip8Sys->display[x] = 0;
     }
 
@@ -93,7 +93,7 @@ int processNextOpcode(struct chip8System * chip8) {
 
                 if (opcodeDigits[2] == 0xE && opcodeDigits[3] == 0x0) {
 
-                    for (int i = 0; i < 32 * 64; i++) {
+                    for (int i = 0; i < C8_WIDTH * C8_HEIGHT; i++) {
                         chip8->display[i] = 0;
                     }
 
@@ -300,7 +300,7 @@ int processNextOpcode(struct chip8System * chip8) {
                         int xPos = chip8->V[opcodeDigits[1]];
 
                         int pixelLocation;
-                        pixelLocation = ((yPos + i) * 64 + xPos + j) % (64 * 32);
+                        pixelLocation = ((yPos + i) * C8_WIDTH + xPos + j) % (C8_WIDTH * C8_HEIGHT);
 
                         if (chip8->display[pixelLocation] != 0) {
                             chip8->V[0xF] = 1;
