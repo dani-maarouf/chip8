@@ -93,10 +93,7 @@ int processNextOpcode(struct chip8System * chip8) {
     switch (opcodeDigits[0]) {
         case 0: {
 
-            if (opcodeDigits[1]) {
-               printf("Illegal opcode 0NNN\n");
-            } else {
-
+            if (opcodeDigits[1] == 0) {
                 if (opcodeDigits[2] == 0xE && opcodeDigits[3] == 0x0) {
 
                     for (int i = 0; i < C8_WIDTH * C8_HEIGHT; i++) {
@@ -119,6 +116,9 @@ int processNextOpcode(struct chip8System * chip8) {
                     return 0;
                 }
 
+            } else {
+                printf("Illegal opcode 0NNN\n");
+                chip8->PC += 2;
             }
             break;
         }
@@ -231,8 +231,8 @@ int processNextOpcode(struct chip8System * chip8) {
                 }
                 case 6:
                     
-                    chip8->V[0xF] = (chip8->V[opcodeDigits[1]] & 0x01) ? 1 : 0;
-                    chip8->V[opcodeDigits[1]] = chip8->V[opcodeDigits[1]] >> 1;
+                    chip8->V[0xF] = (chip8->V[opcodeDigits[2]] & 0x01) ? 1 : 0;
+                    chip8->V[opcodeDigits[1]] = chip8->V[opcodeDigits[2]] >> 1;
                     chip8->PC += 2;
                     break;
 
@@ -253,8 +253,10 @@ int processNextOpcode(struct chip8System * chip8) {
                 }
                 case 0xE:
 
-                    chip8->V[0xF] = (chip8->V[opcodeDigits[1]] & 0x80) ? 1 : 0;
-                    chip8->V[opcodeDigits[1]] = chip8->V[opcodeDigits[1]] << 1;
+                    chip8->V[0xF] = (chip8->V[opcodeDigits[2]] & 0x80) ? 1 : 0;
+
+                    chip8->V[opcodeDigits[1]] = chip8->V[opcodeDigits[2]] << 1;
+
                     chip8->PC += 2;
                     break;
             }
@@ -399,6 +401,7 @@ int processNextOpcode(struct chip8System * chip8) {
 
                     for (int x = 0; x <= opcodeDigits[1]; x++) {
                         chip8->RAM[chip8->I + x] = chip8->V[x];
+                        chip8->I += 1;
                     }
                     chip8->PC += 2;
                     break;
@@ -406,6 +409,7 @@ int processNextOpcode(struct chip8System * chip8) {
                 case 6:
                     for (int x = 0; x <= opcodeDigits[1]; x++) {
                         chip8->V[x] = chip8->RAM[chip8->I + x];
+                        chip8->I += 1;
                     }
                     chip8->PC += 2;
                     break;

@@ -2,7 +2,6 @@
 #include <string.h>
 #include "chip8.h"
 
-//static const int FPS = 60;
 static const int FRAME_TIME = 1000/60;
 static const int SCALE_FACTOR = 10;
 
