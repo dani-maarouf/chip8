@@ -6,7 +6,7 @@
 static const int FRAME_TIME = 1000/60;
 static const int SCALE_FACTOR = 10;
 
-static int processEvents(bool *, SDL_Event *, int (*func)(SDL_Event *));
+static int processEvents(bool *, SDL_Event *);
 static int initSDL(const char *);
 static void closeSDL();
 static void draw(uint32_t * pixels);
@@ -25,10 +25,7 @@ void runLoop(struct chip8System chip8, const char * fileLoc) {
     }
 
     int startTime;
-    bool waitInput;
-
     startTime = SDL_GetTicks();
-    waitInput = false;
 
     draw(chip8.display);
 
@@ -44,13 +41,8 @@ void runLoop(struct chip8System chip8, const char * fileLoc) {
 
         //process events
         int result;
-        if (!waitInput) {
-            result = processEvents(chip8.key, &event, SDL_PollEvent);
-        } else {
-            result = processEvents(chip8.key, &event, SDL_WaitEvent);
-        }
+        result = processEvents(chip8.key, &event);  
         if (!result) break;
-        waitInput = false;
         
         //next instruction
         int opcodeResult;
@@ -61,21 +53,16 @@ void runLoop(struct chip8System chip8, const char * fileLoc) {
         }
         else if (opcodeResult == 1) continue;
 
-        if (opcodeResult == 2) {
-
+        //draw and wait until end of frame
+        if (opcodeResult == 2 || opcodeResult == 3) {
             draw(chip8.display);
-
             int frameTime = SDL_GetTicks() - startTime;
             if (frameTime < FRAME_TIME) {
                 SDL_Delay(FRAME_TIME - frameTime);
             }
             startTime = SDL_GetTicks();
-
             decrementC8Counters(&chip8);
-            
-        } else if (opcodeResult == 3) {
-            waitInput = true;
-        }
+        } 
     }
 
     closeSDL();
@@ -131,9 +118,9 @@ static int initSDL(const char * fileLoc) {
 
 }
 
-static int processEvents(bool * key, SDL_Event * event, int (*func)(SDL_Event *)) {
+static int processEvents(bool * key, SDL_Event * event) {
 
-    while (func(event)) {
+    while (SDL_PollEvent(event)) {
         switch(event->type) {
             case SDL_QUIT: {
                 return 0;
@@ -143,119 +130,122 @@ static int processEvents(bool * key, SDL_Event * event, int (*func)(SDL_Event *)
                 switch(event->key.keysym.sym) {
 
                     case SDLK_1:
-                        key[0x1] = true;
-                        break;
+                    key[0x1] = true;
+                    break;
                     case SDLK_2:
-                        key[0x2] = true;
-                        break;
+                    key[0x2] = true;
+                    break;
                     case SDLK_3:
-                        key[0x3] = true;
-                        break;
+                    key[0x3] = true;
+                    break;
                     case SDLK_4:
-                        key[0xC] = true;
-                        break;
+                    key[0xC] = true;
+                    break;
                     case SDLK_q:
-                        key[0x4] = true;
-                        break;
+                    key[0x4] = true;
+                    break;
                     case SDLK_w:
-                        key[0x5] = true;
-                        break;
+                    key[0x5] = true;
+                    break;
                     case SDLK_e:
-                        key[0x6] = true;
-                        break;
+                    key[0x6] = true;
+                    break;
                     case SDLK_r:
-                        key[0xD] = true;
-                        break;
+                    key[0xD] = true;
+                    break;
                     case SDLK_a:
-                        key[0x7] = true;
-                        break;
+                    key[0x7] = true;
+                    break;
                     case SDLK_s:
-                        key[0x8] = true;
-                        break;
+                    key[0x8] = true;
+                    break;
                     case SDLK_d:
-                        key[0x9] = true;
-                        break;
+                    key[0x9] = true;
+                    break;
                     case SDLK_f:
-                        key[0xE] = true;
-                        break;
+                    key[0xE] = true;
+                    break;
                     case SDLK_z:
-                        key[0xA] = true;
-                        break;
+                    key[0xA] = true;
+                    break;
                     case SDLK_x:
-                        key[0x0] = true;
-                        break;
+                    key[0x0] = true;
+                    break;
                     case SDLK_c:
-                        key[0xB] = true;
-                        break;
+                    key[0xB] = true;
+                    break;
                     case SDLK_v:
-                        key[0xF] = true;
-                        break;
+                    key[0xF] = true;
+                    break;
                     default:
-                        break;
+                    break;
                 }
                 break;
             }
 
             case SDL_KEYUP: {
-               switch(event->key.keysym.sym) {
+             switch(event->key.keysym.sym) {
 
-                    case SDLK_1:
-                        key[0x1] = false;
-                        break;
-                    case SDLK_2:
-                        key[0x2] = false;
-                        break;
-                    case SDLK_3:
-                        key[0x3] = false;
-                        break;
-                    case SDLK_4:
-                        key[0xC] = false;
-                        break;
-                    case SDLK_q:
-                        key[0x4] = false;
-                        break;
-                    case SDLK_w:
-                        key[0x5] = false;
-                        break;
-                    case SDLK_e:
-                        key[0x6] = false;
-                        break;
-                    case SDLK_r:
-                        key[0xD] = false;
-                        break;
-                    case SDLK_a:
-                        key[0x7] = false;
-                        break;
-                    case SDLK_s:
-                        key[0x8] = false;
-                        break;
-                    case SDLK_d:
-                        key[0x9] = false;
-                        break;
-                    case SDLK_f:
-                        key[0xE] = false;
-                        break;
-                    case SDLK_z:
-                        key[0xA] = false;
-                        break;
-                    case SDLK_x:
-                        key[0x0] = false;
-                        break;
-                    case SDLK_c:
-                        key[0xB] = false;
-                        break;
-                    case SDLK_v:
-                        key[0xF] = false;
-                        break;
-                    default:
-                        break;
-               }
-               break;
-           }
+                case SDLK_1:
+                key[0x1] = false;
+                break;
+                case SDLK_2:
+                key[0x2] = false;
+                break;
+                case SDLK_3:
+                key[0x3] = false;
+                break;
+                case SDLK_4:
+                key[0xC] = false;
+                break;
+                case SDLK_q:
+                key[0x4] = false;
+                break;
+                case SDLK_w:
+                key[0x5] = false;
+                break;
+                case SDLK_e:
+                key[0x6] = false;
+                break;
+                case SDLK_r:
+                key[0xD] = false;
+                break;
+                case SDLK_a:
+                key[0x7] = false;
+                break;
+                case SDLK_s:
+                key[0x8] = false;
+                break;
+                case SDLK_d:
+                key[0x9] = false;
+                break;
+                case SDLK_f:
+                key[0xE] = false;
+                break;
+                case SDLK_z:
+                key[0xA] = false;
+                break;
+                case SDLK_x:
+                key[0x0] = false;
+                break;
+                case SDLK_c:
+                key[0xB] = false;
+                break;
+                case SDLK_v:
+                key[0xF] = false;
+                break;
+                default:
+                break;
+            }
+            break;
         }
+        default:
+        return 1;
     }
 
-    return 1;
+}
+
+return 1;
 }
 
 static void closeSDL() {

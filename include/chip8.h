@@ -31,7 +31,8 @@ struct chip8System {
 /* chip8Init
  * Initializes struct values, reads user specified file into memory and reads sprites into memory
  */
-struct chip8System * chip8Init(char *, int, int);
+struct chip8System * chip8Init(char *);
+void destroyChip8System(struct chip8System *);
 void decrementC8Counters(struct chip8System *);
 int processNextOpcode(struct chip8System *);
 

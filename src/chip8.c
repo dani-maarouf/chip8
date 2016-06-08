@@ -8,7 +8,7 @@ const int MAX_INT = 4294967295;
 static int readFile(const char *, uint8_t *, int);
 static void readSpritesIntoRAM(uint8_t *, int);
 
-struct chip8System * chip8Init(char * fileLoc, int startPC, int startSprites) {
+struct chip8System * chip8Init(char * fileLoc) {
 
     if (fileLoc == NULL) {
         return NULL;
@@ -43,7 +43,7 @@ struct chip8System * chip8Init(char * fileLoc, int startPC, int startSprites) {
     chip8Sys->I = 0x0;
     chip8Sys->DT = 0x0;
     chip8Sys->ST = 0x0;
-    chip8Sys->PC = startPC;
+    chip8Sys->PC = 0x200;   //this may need to be different for some applications
     chip8Sys->SP = 0x0;
 
     int readResult;
@@ -54,10 +54,16 @@ struct chip8System * chip8Init(char * fileLoc, int startPC, int startSprites) {
         return NULL;
     }
 
-    readSpritesIntoRAM(chip8Sys->RAM, startSprites);
+    readSpritesIntoRAM(chip8Sys->RAM, 0x50);
 
     return chip8Sys;
 
+}
+
+void destroyChip8System(struct chip8System * chip8) {
+    free(chip8->display);
+    free(chip8);
+    return;
 }
 
 void decrementC8Counters(struct chip8System * chip8) {
