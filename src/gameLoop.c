@@ -3,7 +3,7 @@
 #include "chip8.h"
 
 const int FPS = 60;
-const int SCALE_FACTOR = 15;
+const int SCALE_FACTOR = 10;
 
 static int processEvents(bool *, SDL_Event *, int (*func)(SDL_Event *));
 static int initSDL(const char *);
@@ -63,6 +63,7 @@ void runLoop(struct chip8System chip8, const char * fileLoc) {
         } else if (opcodeResult == 3) {
             result = processEvents(chip8.key, &event, SDL_WaitEvent);
         }
+
     }
 
     closeSDL();

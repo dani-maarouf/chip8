@@ -74,13 +74,15 @@ int processNextOpcode(struct chip8System * chip8) {
                                 chip8->RAM[chip8->PC + 1] / 16, chip8->RAM[chip8->PC + 1] % 16};
     bool draw = false;
 
+    /*
     printf("Executed opcode %x%x%x%x, PC:%x, I:%x, SP:%x ", opcodeDigits[0], opcodeDigits[1], 
-                    opcodeDigits[2], opcodeDigits[3], chip8->PC, chip8->I, chip8->SP);
+                   opcodeDigits[2], opcodeDigits[3], chip8->PC, chip8->I, chip8->SP);
 
     for (int x = 0; x < 16; x++) {
-        printf("V%x: %x ", x, chip8->V[x]);
+        printf("V%x: %2x ", x, chip8->V[x]);
     }
     printf("\n");
+    */
 
     switch (opcodeDigits[0]) {
         case 0: {
@@ -164,7 +166,7 @@ int processNextOpcode(struct chip8System * chip8) {
 
         case 7:
 
-            chip8->V[opcodeDigits[1]] += opcodeDigits[2] * 0x10 + opcodeDigits[3];
+            chip8->V[opcodeDigits[1]] = (opcodeDigits[2] * 0x10 + opcodeDigits[3] + chip8->V[opcodeDigits[1]]) & 0xFF;
             chip8->PC += 2;
             break;
 
@@ -195,12 +197,13 @@ int processNextOpcode(struct chip8System * chip8) {
 
                     unsigned int result;
                     result = (int) chip8->V[opcodeDigits[1]] + (int) chip8->V[opcodeDigits[2]];
-                    if (result >= 0x100) {
+
+                    if (result >= 255) {
                         chip8->V[0xF] = 1;
-                        chip8->V[opcodeDigits[1]] = (result - 256);
+                        chip8->V[opcodeDigits[1]] = (chip8->V[opcodeDigits[1]] + chip8->V[opcodeDigits[2]]) & 0xFF;
                     } else {
                         chip8->V[0xF] = 0;
-                        chip8->V[opcodeDigits[1]] = result;
+                        chip8->V[opcodeDigits[1]] = (chip8->V[opcodeDigits[1]] + chip8->V[opcodeDigits[2]]) & 0xFF;
                     }
                     chip8->PC += 2;
                     break;
@@ -212,17 +215,17 @@ int processNextOpcode(struct chip8System * chip8) {
 
                     if (result >= 0) {
                         chip8->V[0xF] = 1;
-                        chip8->V[opcodeDigits[1]] = result;
+                        chip8->V[opcodeDigits[1]] = (chip8->V[opcodeDigits[1]] - chip8->V[opcodeDigits[2]]) & 0xFF;
                     } else {
                         chip8->V[0xF] = 0;
-                        chip8->V[opcodeDigits[1]] = 256 + result;
+                        chip8->V[opcodeDigits[1]] = (chip8->V[opcodeDigits[1]] - chip8->V[opcodeDigits[2]]) & 0xFF;
                     }
                     chip8->PC += 2;
                     break;
                 }
                 case 6:
                     
-                    chip8->V[0xF] = chip8->V[opcodeDigits[1]] & 1;
+                    chip8->V[0xF] = (chip8->V[opcodeDigits[1]] & 0x01) ? 1 : 0;
                     chip8->V[opcodeDigits[1]] = chip8->V[opcodeDigits[1]] >> 1;
                     chip8->PC += 2;
                     break;
@@ -232,11 +235,11 @@ int processNextOpcode(struct chip8System * chip8) {
                     int result = (int) chip8->V[opcodeDigits[2]] - (int) chip8->V[opcodeDigits[1]];
 
                     if (result >= 0) {
-                        chip8->V[0xF] = 0;
-                        chip8->V[opcodeDigits[1]] = result;
-                    } else {
                         chip8->V[0xF] = 1;
-                        chip8->V[opcodeDigits[1]] = result + 256;
+                        chip8->V[opcodeDigits[1]] = (chip8->V[opcodeDigits[2]] - chip8->V[opcodeDigits[1]]) & 0xFF;
+                    } else {
+                        chip8->V[0xF] = 0;
+                        chip8->V[opcodeDigits[1]] = (chip8->V[opcodeDigits[2]] - chip8->V[opcodeDigits[1]]) & 0xFF;
                     }
                     chip8->PC += 2;
                     
@@ -244,8 +247,8 @@ int processNextOpcode(struct chip8System * chip8) {
                 }
                 case 0xE:
 
-                    chip8->V[0xF] = chip8->V[opcodeDigits[1]] / 128;
-                    chip8->V[opcodeDigits[1]] *= 2;
+                    chip8->V[0xF] = (chip8->V[opcodeDigits[1]] & 0x80) ? 1 : 0;
+                    chip8->V[opcodeDigits[1]] = chip8->V[opcodeDigits[1]] << 1;
                     chip8->PC += 2;
                     break;
             }
@@ -439,6 +442,7 @@ static int readFile(const char * fileLocation, uint8_t * RAM, int startLoc) {
         index++;
     }
 
+    fclose(romFile);
     return 1;
 }
 
@@ -450,6 +454,7 @@ static void readSpritesIntoRAM(uint8_t * RAM, int start) {
                                 0xF0, 0x10, 0xF0, 0x10, 0xF0,
                                 0x90, 0x90, 0xF0, 0x10, 0x10,
                                 0xF0, 0x80, 0xF0, 0x10, 0xF0,
+                                0xF0, 0x80, 0xF0, 0x90, 0xF0,
                                 0xF0, 0x10, 0x20, 0x40, 0x40,
                                 0xF0, 0x90, 0xF0, 0x90, 0xF0,
                                 0xF0, 0x90, 0xF0, 0x10, 0xF0,

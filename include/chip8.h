@@ -32,6 +32,5 @@ struct chip8System * chip8Init(char *, int, int);
 void decrementC8Counters(struct chip8System *);
 int processNextOpcode(struct chip8System *);
 
-
 #endif
 /* defined __DMAAROUF_CHIP8__ */
