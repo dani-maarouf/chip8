@@ -21,7 +21,7 @@ int main (int argc, char ** argv) {
         return 1;
     }
 
-    runLoop(*chip8);
+    runLoop(*chip8, argv[1]);
     free(chip8);
 
     return 0;

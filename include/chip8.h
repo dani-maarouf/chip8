@@ -8,17 +8,20 @@ struct chip8System {
 
     uint8_t RAM[0x1000];
     uint8_t V[16];          //registers
+
     uint16_t stack[16];
-    bool display[32][64];    
-    bool key[16];
+
+    uint32_t * display;    
+
+    bool key[16];           //controller
 
     uint16_t I;
 
     uint16_t DT;            //delay timer
     uint16_t ST;            //sound timer
 
-    uint16_t PC;
-    uint8_t SP;
+    uint16_t PC;            //program counter
+    uint8_t SP;             //stasck pointer
 
 };
 

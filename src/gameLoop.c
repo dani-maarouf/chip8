@@ -1,70 +1,68 @@
-#include <SDL/SDL.h>
+#include <SDL2/SDL.h>
+#include <string.h>
 #include "chip8.h"
 
-#define FPS 240
+#define FPS 60
+
+const int SCALE_FACTOR = 15;
 
 static int processEvents(struct chip8System *);
 
-SDL_Surface * screen;
-SDL_Rect pixels[32][64];
-uint32_t colour[2];
+SDL_Window * window = NULL;
+SDL_Renderer * renderer = NULL;
+SDL_Texture * texture = NULL;
 
-int initSDL() {
+int initSDL(const char * fileLoc) {
 
-    if (SDL_Init(SDL_INIT_EVERYTHING) == -1) {
+    if (SDL_Init(SDL_INIT_VIDEO) < 0) {
         return 0;
     }
 
-    screen = SDL_SetVideoMode(640, 320, 8, SDL_DOUBLEBUF);
+    char windowTitle[100];
+    strcpy(windowTitle, "chip8 emulator : ");
+    strcat(windowTitle, fileLoc);
 
-    if (screen == NULL) {
+
+    window = SDL_CreateWindow(windowTitle, SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
+        64 * SCALE_FACTOR, 32 * SCALE_FACTOR, 0);
+
+    if (window == NULL) {
+        SDL_Quit();
         return 0;
     }
 
-    SDL_WM_SetCaption("chip8 emulator", NULL);
+    renderer = SDL_CreateRenderer(window, -1, 0);
 
-    for (int y = 0; y < 32; y++) {
-        for (int x = 0; x < 64; x++) {
-            pixels[y][x].x = x * 10;
-            pixels[y][x].y = y * 10;
-            pixels[y][x].w = 10;
-            pixels[y][x].h = 10;
-        }
+    if (renderer == NULL) {
+        SDL_Quit();
+        return 0;
     }
 
-    colour[0] = SDL_MapRGB(screen->format, 0x0, 0x0, 0x0);
-    colour[1] = SDL_MapRGB(screen->format, 0xFF, 0xFF, 0xFF);
+    texture = SDL_CreateTexture(renderer,
+        SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STATIC, 64, 32);
+
+    if (texture == NULL) {
+        SDL_Quit();
+        return 0;
+    }
+
+    SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, 0); 
 
     return 1;
 
 }
 
-void draw(struct chip8System chip8) {
+void runLoop(struct chip8System chip8, const char * fileLoc) {
 
-    for (int x = 0; x < 32; x++) {
-        for (int y = 0; y < 64; y++) {
-            if (chip8.display[x][y]) {
-                SDL_FillRect(screen, &(pixels[x][y]), colour[1]);
-            } else {
-                SDL_FillRect(screen, &(pixels[x][y]), colour[0]);
-            }
-
-        }
-    }
-    SDL_Flip(screen);
-
-    return;
-
-}
-
-void runLoop(struct chip8System chip8) {
-
-    if (!initSDL()) {
+    if (!initSDL(fileLoc)) {
         SDL_Quit();
         return;
     }
 
-    SDL_FillRect(screen, &screen->clip_rect, colour[0]);
+    SDL_UpdateTexture(texture, NULL, chip8.display, 64 * sizeof(uint32_t));
+    SDL_RenderClear(renderer);
+    SDL_RenderCopy(renderer, texture, NULL, NULL);
+    SDL_RenderPresent(renderer);
 
     int startTime;
     startTime = SDL_GetTicks();
@@ -90,7 +88,10 @@ void runLoop(struct chip8System chip8) {
         //draw
         if (opcodeResult == 2 || opcodeResult == 3) {
             if (opcodeResult == 2) {
-                draw(chip8);
+                SDL_UpdateTexture(texture, NULL, chip8.display, 64 * sizeof(uint32_t));
+                SDL_RenderClear(renderer);
+                SDL_RenderCopy(renderer, texture, NULL, NULL);
+                SDL_RenderPresent(renderer);
             }
 
             int frameTime = SDL_GetTicks() - startTime;
@@ -103,8 +104,7 @@ void runLoop(struct chip8System chip8) {
         }
     }
 
-
-    SDL_FreeSurface(screen);
+    //destroy
     SDL_Quit();
     return;
 }
