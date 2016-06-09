@@ -401,7 +401,7 @@ int processNextOpcode(struct chip8System * chip8) {
 
                     for (int x = 0; x <= opcodeDigits[1]; x++) {
                         chip8->RAM[chip8->I + x] = chip8->V[x];
-                        chip8->I += 1;
+                        //chip8->I += 1;
                     }
                     chip8->PC += 2;
                     break;
@@ -409,7 +409,7 @@ int processNextOpcode(struct chip8System * chip8) {
                 case 6:
                     for (int x = 0; x <= opcodeDigits[1]; x++) {
                         chip8->V[x] = chip8->RAM[chip8->I + x];
-                        chip8->I += 1;
+                        //chip8->I += 1;
                     }
                     chip8->PC += 2;
                     break;

@@ -1,7 +1,14 @@
-# x86_64-w64-mingw32-gcc -Iinclude -std=c99 src/main.c src/chip8.c -lmingw32 -lSDLmain -lSDL
+CFLAGS=-Iinclude -std=c99 -Wall -Ofast
+SRC_FILES = src/main.c src/chip8.c src/gameLoop.c
+HEADER_FILES = include/chip8.h include/gameLoop.h
 
-CC=gcc
-CFLAGS=-Iinclude -std=c99 -Wall
+all: linux
 
-chip8: src/main.c src/chip8.c src/gameLoop.c
-	$(CC) $(CFLAGS) src/main.c src/chip8.c src/gameLoop.c -Ofast -o chip8 -lSDL2
+linux: $(SRC_FILES) $(HEADER_FILES)
+	gcc $(CFLAGS) $(SRC_FILES) -o chip8 -lSDL2
+
+mac: 
+	gcc $(CFLAGS) $(SRC_FILES) -o chip8 -framework SDL2
+
+windows:
+	x86_64-w64-mingw32-gcc $(CFLAGS) $(SRC_FILES) -o chip8.exe -lmingw32 -lSDL2main -lSDL2
