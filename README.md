@@ -10,6 +10,19 @@
 
     z	x	c	v
 
+## Usage
+
+#### Linux
+
+Install with `make`
+
+Run with `./chip8 ROM`
+
+#### Mac
+
+Install with `make mac`
+
+Run with `./chip8 ROM`
 
 ## Sample screenshots
 
