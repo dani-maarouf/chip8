@@ -1,7 +1,9 @@
-#include <SDL2/SDL.h>
 #include <stdio.h>
 #include <string.h>
 #include "chip8.h"
+
+#include <SDL2/SDL.h>
+#include <AL/alut.h>
 
 static const int FRAME_TIME = 1000/60;
 static const int SCALE_FACTOR = 10;
@@ -10,13 +12,16 @@ static int processEvents(bool *, SDL_Event *);
 static int initSDL(const char *);
 static void closeSDL();
 static void draw(uint32_t * pixels);
+static void generateBeep();
 
 SDL_Window * window = NULL;
 SDL_Renderer * renderer = NULL;
 SDL_Texture * texture = NULL;
 
+ALuint buffer;
+ALuint source;
 
-void runLoop(struct chip8System chip8, const char * fileLoc) {
+void runLoop(struct chip8System chip8, const char * fileLoc, int * argc, char ** argv) {
 
     if (!initSDL(fileLoc)) {
         fprintf(stderr, "Could not initialize SDL : %s\n", SDL_GetError());
@@ -24,6 +29,12 @@ void runLoop(struct chip8System chip8, const char * fileLoc) {
         return;
     }
 
+    alutInit (argc, argv);
+    buffer = alutCreateBufferWaveform (ALUT_WAVEFORM_SQUARE, 880, 0, FRAME_TIME / 1000.0);
+    alGenSources (1, &source);
+    alSourcei(source, AL_BUFFER, buffer);
+    alSourcef(source, AL_GAIN, 0.1f);
+    
     int startTime;
     startTime = SDL_GetTicks();
 
@@ -56,6 +67,11 @@ void runLoop(struct chip8System chip8, const char * fileLoc) {
         //draw and wait until end of frame
         if (opcodeResult == 2 || opcodeResult == 3) {
             draw(chip8.display);
+
+            if (chip8.ST != 0) {
+                generateBeep();
+            }
+
             int frameTime = SDL_GetTicks() - startTime;
             if (frameTime < FRAME_TIME) {
                 SDL_Delay(FRAME_TIME - frameTime);
@@ -65,6 +81,7 @@ void runLoop(struct chip8System chip8, const char * fileLoc) {
         } 
     }
 
+    alutExit();
     closeSDL();
     return;
 }
@@ -262,5 +279,10 @@ static void closeSDL() {
 
     SDL_Quit();
 
+    return;
+}
+
+static void generateBeep() {
+    alSourcePlay(source);
     return;
 }

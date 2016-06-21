@@ -12,6 +12,8 @@
 
 ## Usage
 
+Requires SDL2, OpenAL and freeALUT to compile.
+
 #### Linux
 
 Install with `make`

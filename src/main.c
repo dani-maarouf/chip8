@@ -21,7 +21,7 @@ int main (int argc, char ** argv) {
         return 1;
     }
 
-    runLoop(*chip8, argv[1]);
+    runLoop(*chip8, argv[1], &argc, argv);
 
     destroyChip8System(chip8);
 
