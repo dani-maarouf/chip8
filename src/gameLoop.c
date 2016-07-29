@@ -3,25 +3,40 @@
 #include "chip8.h"
 
 #include <SDL2/SDL.h>
-#include <AL/alut.h>
 
+
+//video
 static const int FRAME_TIME = 1000/60;
 static const int SCALE_FACTOR = 10;
-
-static int processEvents(bool *, SDL_Event *);
-static int initSDL(const char *);
-static void closeSDL();
-static void draw(uint32_t * pixels);
-static void generateBeep();
 
 SDL_Window * window = NULL;
 SDL_Renderer * renderer = NULL;
 SDL_Texture * texture = NULL;
 
-ALuint buffer;
-ALuint source;
 
-void runLoop(struct chip8System chip8, const char * fileLoc, int * argc, char ** argv) {
+//audio
+const int samplingFrequency = 48000;
+const int sampleBytes = sizeof(int16_t) * 2;
+const int channels = 2;
+const SDL_AudioFormat format = AUDIO_S16LSB;
+const int toneFrequency = 512;
+const int16_t waveAmplitude = 1500;
+const int squareHalfPeriod = (48000 / 512) / 2;
+
+uint64_t sampleClock = 0;
+SDL_AudioDeviceID sdlAudioDevice = 0;
+
+
+//local functions
+static int processEvents(bool *, SDL_Event *);
+static int initSDL(const char *);
+static void closeSDL();
+static inline void draw(uint32_t * pixels);
+static inline void generateAndQueueSquare(int bytesToQueue, uint64_t * clock, int period, int volume);
+static inline void topUpQueue();
+
+
+void runLoop(struct chip8System chip8, const char * fileLoc) {
 
     if (!initSDL(fileLoc)) {
         fprintf(stderr, "Could not initialize SDL : %s\n", SDL_GetError());
@@ -29,59 +44,69 @@ void runLoop(struct chip8System chip8, const char * fileLoc, int * argc, char **
         return;
     }
 
-    alutInit (argc, argv);
-    buffer = alutCreateBufferWaveform (ALUT_WAVEFORM_SQUARE, 880, 0, FRAME_TIME / 1000.0);
-    alGenSources (1, &source);
-    alSourcei(source, AL_BUFFER, buffer);
-    alSourcef(source, AL_GAIN, 0.1f);
+    SDL_PauseAudioDevice(sdlAudioDevice, 1);    //pause audio
+    topUpQueue();                               //top up audio queue with square wave bytes
     
     int startTime;
     startTime = SDL_GetTicks();
 
-    draw(chip8.display);
+    draw(chip8.display);                        //first frame
+
+    SDL_Event event;
 
     while (true) {
 
-        //decrement counters at appropriate FPS
-        if (SDL_GetTicks() - startTime >= FRAME_TIME) {
-            decrementC8Counters(&chip8);
-            startTime = SDL_GetTicks();
-        }
-        
-        SDL_Event event;
-
-        //process events
-        int result;
-        result = processEvents(chip8.key, &event);  
-        if (!result) break;
-        
-        //next instruction
         int opcodeResult;
-        opcodeResult = processNextOpcode(&chip8);
+        int eventResult = processEvents(chip8.key, &event); //process input and events
+
+        do {
+
+            if (SDL_GetTicks() - startTime >= FRAME_TIME) {
+                ////process input and events and decrement ST and DT at 60hz
+                eventResult = processEvents(chip8.key, &event);  
+                decrementC8Counters(&chip8);
+                startTime = SDL_GetTicks();
+            }
+
+            opcodeResult = processNextOpcode(&chip8, false);
+
+        } while (eventResult != 0 && opcodeResult == 1);
+
+        if (eventResult == 0) {
+            //quit
+            break;
+        }
+
         if (opcodeResult == 0) {
+            //infinite chip8 loop
             SDL_Delay(1000);
             break;
         }
-        else if (opcodeResult == 1) continue;
 
-        //draw and wait until end of frame
-        if (opcodeResult == 2 || opcodeResult == 3) {
-            draw(chip8.display);
 
-            if (chip8.ST != 0) {
-                generateBeep();
-            }
+        draw(chip8.display);    //pixel buffer to screen
+        decrementC8Counters(&chip8);
 
-            int frameTime = SDL_GetTicks() - startTime;
-            if (frameTime < FRAME_TIME) {
-                SDL_Delay(FRAME_TIME - frameTime);
-            }
-            startTime = SDL_GetTicks();
-            decrementC8Counters(&chip8);
-        } 
+        if (chip8.ST != 0) {
+            topUpQueue();
+            SDL_PauseAudioDevice(sdlAudioDevice, 0);    //unpause audio
+        } else {
+            SDL_PauseAudioDevice(sdlAudioDevice, 1);    //pause audio
+        }
+
+        //wait for next frame
+        int frameTime = SDL_GetTicks() - startTime;
+        if (frameTime < FRAME_TIME) {
+            SDL_Delay(FRAME_TIME - frameTime);
+        }
+        startTime = SDL_GetTicks();
+        
+        
     }
 
-    alutExit();
+    SDL_PauseAudioDevice(sdlAudioDevice, 1);    //pause
+    SDL_ClearQueuedAudio(sdlAudioDevice);
+
     closeSDL();
     return;
 }
@@ -93,14 +118,43 @@ inline static void draw(uint32_t * pixels) {
     SDL_RenderPresent(renderer);
 }
 
+static inline void topUpQueue() {
+    int bytes = (samplingFrequency * sampleBytes / 10) - SDL_GetQueuedAudioSize(sdlAudioDevice);
+    if (bytes) {
+        generateAndQueueSquare(bytes, &sampleClock, squareHalfPeriod, waveAmplitude);
+    }
+    return;
+}
+
+static inline void generateAndQueueSquare(int bytesToQueue, uint64_t * clock, int period, int volume) {
+
+    int16_t * SoundBuffer = (int16_t *) malloc(bytesToQueue);
+    
+    for (int i = 0; i < (bytesToQueue/sampleBytes); i++, (*clock)++) {
+        //alternatives produces high and low signals based on current time and period
+        int16_t SampleValue = ((*clock / period) % 2) ? volume : -volume;
+        SoundBuffer[i * 2] = SampleValue;
+        SoundBuffer[i * 2 + 1] = SampleValue;
+
+    }
+
+    SDL_QueueAudio(sdlAudioDevice, (void *) SoundBuffer, bytesToQueue);
+
+    free(SoundBuffer);
+
+    return;
+}
+
 static int initSDL(const char * fileLoc) {
 
-    if (SDL_Init(SDL_INIT_VIDEO) < 0) {
+    if (SDL_Init(SDL_INIT_AUDIO | SDL_INIT_VIDEO) < 0) {
+        printf("Failed to initialize SDL : %s\n", SDL_GetError());
         return 0;
     }
 
+    /* VIDEO */
     char windowTitle[100];
-    strcpy(windowTitle, "chip8 : ");
+    strcpy(windowTitle, "chip8 emulator : ");
     strcat(windowTitle, fileLoc);
 
     window = SDL_CreateWindow(windowTitle, SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
@@ -131,77 +185,100 @@ static int initSDL(const char * fileLoc) {
 
     SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, 0); 
 
+    /* AUDIO */
+    SDL_AudioSpec want;
+    SDL_memset(&want, 0, sizeof(want));
+
+    SDL_AudioSpec have;
+    want.freq = samplingFrequency;
+    want.format = format;        //32-bit floating point samples in little-endian byte order
+    want.channels = channels;
+    want.samples = samplingFrequency * sampleBytes / 60;
+
+    sdlAudioDevice = SDL_OpenAudioDevice(NULL, 0, &want, &have, 0);
+
+    if (sdlAudioDevice == 0) {
+        printf("Failed to open audio: %s\n", SDL_GetError());
+        SDL_DestroyTexture(texture);
+        SDL_DestroyRenderer(renderer);
+        SDL_DestroyWindow(window);
+        SDL_Quit();
+        return 0;
+    }
+
     return 1;
 
 }
 
 static int processEvents(bool * key, SDL_Event * event) {
 
-    while (SDL_PollEvent(event)) {
-        switch(event->type) {
-            case SDL_QUIT: {
-                return 0;
-            }
+    SDL_PollEvent(event);
 
-            case SDL_KEYDOWN: {
-                switch(event->key.keysym.sym) {
+    switch(event->type) {
+        case SDL_QUIT: {
+            return 0;
+        }
 
-                    case SDLK_1:
-                    key[0x1] = true;
-                    break;
-                    case SDLK_2:
-                    key[0x2] = true;
-                    break;
-                    case SDLK_3:
-                    key[0x3] = true;
-                    break;
-                    case SDLK_4:
-                    key[0xC] = true;
-                    break;
-                    case SDLK_q:
-                    key[0x4] = true;
-                    break;
-                    case SDLK_w:
-                    key[0x5] = true;
-                    break;
-                    case SDLK_e:
-                    key[0x6] = true;
-                    break;
-                    case SDLK_r:
-                    key[0xD] = true;
-                    break;
-                    case SDLK_a:
-                    key[0x7] = true;
-                    break;
-                    case SDLK_s:
-                    key[0x8] = true;
-                    break;
-                    case SDLK_d:
-                    key[0x9] = true;
-                    break;
-                    case SDLK_f:
-                    key[0xE] = true;
-                    break;
-                    case SDLK_z:
-                    key[0xA] = true;
-                    break;
-                    case SDLK_x:
-                    key[0x0] = true;
-                    break;
-                    case SDLK_c:
-                    key[0xB] = true;
-                    break;
-                    case SDLK_v:
-                    key[0xF] = true;
-                    break;
-                    default:
-                    break;
-                }
+        case SDL_KEYDOWN: {
+            switch(event->key.keysym.sym) {
+
+                case SDLK_1:
+                key[0x1] = true;
+                break;
+                case SDLK_2:
+                key[0x2] = true;
+                break;
+                case SDLK_3:
+                key[0x3] = true;
+                break;
+                case SDLK_4:
+                key[0xC] = true;
+                break;
+                case SDLK_q:
+                key[0x4] = true;
+                break;
+                case SDLK_w:
+                key[0x5] = true;
+                break;
+                case SDLK_e:
+                key[0x6] = true;
+                break;
+                case SDLK_r:
+                key[0xD] = true;
+                break;
+                case SDLK_a:
+                key[0x7] = true;
+                break;
+                case SDLK_s:
+                key[0x8] = true;
+                break;
+                case SDLK_d:
+                key[0x9] = true;
+                break;
+                case SDLK_f:
+                key[0xE] = true;
+                break;
+                case SDLK_z:
+                key[0xA] = true;
+                break;
+                case SDLK_x:
+                key[0x0] = true;
+                break;
+                case SDLK_c:
+                key[0xB] = true;
+                break;
+                case SDLK_v:
+                key[0xF] = true;
+                break;
+                default:
                 break;
             }
 
-            case SDL_KEYUP: {
-             switch(event->key.keysym.sym) {
+            break;
+        }
+
+        case SDL_KEYUP: {
+            switch(event->key.keysym.sym) {
 
                 case SDLK_1:
                 key[0x1] = false;
@@ -260,9 +337,7 @@ static int processEvents(bool * key, SDL_Event * event) {
         return 1;
     }
 
-}
-
-return 1;
+    return 1;
 }
 
 static void closeSDL() {
@@ -277,12 +352,13 @@ static void closeSDL() {
         SDL_DestroyWindow(window);
     }
 
+    if (sdlAudioDevice != 0) {
+        SDL_CloseAudioDevice(sdlAudioDevice);
+    }
+
+
+
     SDL_Quit();
 
-    return;
-}
-
-static void generateBeep() {
-    alSourcePlay(source);
     return;
 }

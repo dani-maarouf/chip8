@@ -34,7 +34,7 @@ struct chip8System {
 struct chip8System * chip8Init(char *);
 void destroyChip8System(struct chip8System *);
 void decrementC8Counters(struct chip8System *);
-int processNextOpcode(struct chip8System *);
+int processNextOpcode(struct chip8System *, int);
 
 #endif
 /* defined __DMAAROUF_CHIP8__ */

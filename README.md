@@ -12,7 +12,7 @@
 
 ## Usage
 
-Requires SDL2, OpenAL and freeALUT to compile.
+Requires SDL2
 
 #### Linux
 
@@ -32,11 +32,4 @@ Run with `./chip8 ROM`
 
 ![alt text](http://i.imgur.com/t9B8qsA.png "Brix")
 
-## Next steps
-
-Improve performance
-
-Add audio
-
-Easier multiplatform build
 

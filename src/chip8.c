@@ -74,7 +74,7 @@ void decrementC8Counters(struct chip8System * chip8) {
     return;
 }
 
-int processNextOpcode(struct chip8System * chip8) {
+int processNextOpcode(struct chip8System * chip8, int incrementI) {
 
     int opcodeDigits[4] = {chip8->RAM[chip8->PC] / 16, chip8->RAM[chip8->PC] % 16,
                                 chip8->RAM[chip8->PC + 1] / 16, chip8->RAM[chip8->PC + 1] % 16};
@@ -113,11 +113,13 @@ int processNextOpcode(struct chip8System * chip8) {
                 } else {
                     printf("Unrecognized opcode %x%x%x%x\n", opcodeDigits[0], 
                         opcodeDigits[1], opcodeDigits[2], opcodeDigits[3]);
+                    exit(1);
                     return 0;
                 }
 
             } else {
                 printf("Illegal opcode 0NNN\n");
+                exit(1);
                 chip8->PC += 2;
             }
             break;
@@ -401,7 +403,9 @@ int processNextOpcode(struct chip8System * chip8) {
 
                     for (int x = 0; x <= opcodeDigits[1]; x++) {
                         chip8->RAM[chip8->I + x] = chip8->V[x];
-                        //chip8->I += 1;
+                        if (incrementI) {
+                            chip8->I += 1;
+                        }
                     }
                     chip8->PC += 2;
                     break;
@@ -409,7 +413,10 @@ int processNextOpcode(struct chip8System * chip8) {
                 case 6:
                     for (int x = 0; x <= opcodeDigits[1]; x++) {
                         chip8->V[x] = chip8->RAM[chip8->I + x];
-                        //chip8->I += 1;
+
+                        if (incrementI) {
+                            chip8->I += 1;
+                        }
                     }
                     chip8->PC += 2;
                     break;
@@ -420,6 +427,7 @@ int processNextOpcode(struct chip8System * chip8) {
         default:
             printf("Warning: Unrecognized opcode %x%x%x%x\n", opcodeDigits[0], 
                     opcodeDigits[1], opcodeDigits[2], opcodeDigits[3]);
+            exit(1);
             break;
     }
 
