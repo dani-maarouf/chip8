@@ -12,34 +12,42 @@
 
 ## Usage
 
-Requires SDL2
-
 #### Linux
 
-Install with `make`
+Install SDL2 development library
+
+Compile program with `make`
 
 Run with `./chip8 ROM`
 
 #### Mac
 
-Install with `make mac`
+Install SDL2 development library (using 'brew' is recommended)
+
+Compile with `make mac`
 
 Run with `./chip8 ROM`
 
 #### Windows
 
-Cross-compile using 
+Install SDL2 development library
+
+Requires mingw32
+
+Compile with `make windows`
+
+Run with `./chip8.exe ROM`
 
 ## Sample screenshots
 
-![alt text](http://i.imgur.com/dWVxIf3.png "Pong")
+![alt text](http://i.imgur.com/1v2JWOX.png "Pong")
 
-![alt text](http://i.imgur.com/t9B8qsA.png "Brix")
+![alt text](http://i.imgur.com/u6zsZgR.png "Brix")
+
+![alt text](http://i.imgur.com/QSrQBtr.png "Space Invaders")
+
+![alt text](http://i.imgur.com/brpEzyA.png "UFO")
 
 ## Notes
-
-Audio works intermittently in cases where sound timer is set to a small value.
-This issue mostly occurs on Windows, occasionaly on Linux and apparently not at all on Mac.
-This can be observed in BRIX and PONG. Maybe this is related to rapidly pausing and unpausing the SDL audio device.
 
 By default FX55 and FX65 will increment the I register. This can be disabled for compatibility purposes by using the -i flag

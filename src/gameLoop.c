@@ -1,8 +1,9 @@
 #include <stdio.h>
 #include <string.h>
+#include <SDL2/SDL.h>
+
 #include "chip8.h"
 
-#include <SDL2/SDL.h>
 
 
 //video
@@ -32,8 +33,7 @@ static int initSDL(const char *);
 static void closeSDL();
 static inline void draw(uint32_t * pixels);
 static inline void generateAndQueueSquare(int bytesToQueue, uint64_t * clock, int period, int volume);
-static inline void topUpQueue();
-
+static inline void topUpQueue(int);
 
 void runLoop(struct chip8System chip8, const char * fileLoc, bool enableI) {
 
@@ -43,15 +43,14 @@ void runLoop(struct chip8System chip8, const char * fileLoc, bool enableI) {
         return;
     }
 
-    bool audioPaused;
-    audioPaused = true;
-    
     int startTime;
     startTime = SDL_GetTicks();
 
     draw(chip8.display);                        //first frame
 
     SDL_Event event;
+
+    SDL_PauseAudioDevice(sdlAudioDevice, 0); 
 
     while (true) {
 
@@ -76,19 +75,9 @@ void runLoop(struct chip8System chip8, const char * fileLoc, bool enableI) {
             break;
         }
 
-        topUpQueue();
-
         if (chip8.ST != 0) {
-            if (audioPaused) {
-                SDL_PauseAudioDevice(sdlAudioDevice, 0);    //unpause audio
-                audioPaused = false;
-            }
+            topUpQueue(sampleBytes * 3200);
             SDL_Delay(3);
-        } else {
-            if (!audioPaused) {
-                SDL_PauseAudioDevice(sdlAudioDevice, 1);    //pause audio
-                audioPaused = true;
-            }
         }
 
         decrementC8Counters(&chip8);
@@ -116,8 +105,8 @@ inline static void draw(uint32_t * pixels) {
     SDL_RenderPresent(renderer);
 }
 
-static inline void topUpQueue() {
-    int bytes = (48000 * sampleBytes) - SDL_GetQueuedAudioSize(sdlAudioDevice);
+static inline void topUpQueue(int numBytesToQueue) {
+    int bytes = (numBytesToQueue) - SDL_GetQueuedAudioSize(sdlAudioDevice);
     if (bytes) {
         generateAndQueueSquare(bytes, &sampleClock, squareHalfPeriod, waveAmplitude);
     }
