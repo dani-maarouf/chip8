@@ -35,7 +35,7 @@ static inline void generateAndQueueSquare(int bytesToQueue, uint64_t * clock, in
 static inline void topUpQueue();
 
 
-void runLoop(struct chip8System chip8, const char * fileLoc) {
+void runLoop(struct chip8System chip8, const char * fileLoc, bool enableI) {
 
     if (!initSDL(fileLoc)) {
         fprintf(stderr, "Could not initialize SDL : %s\n", SDL_GetError());
@@ -59,7 +59,7 @@ void runLoop(struct chip8System chip8, const char * fileLoc) {
         int eventResult = processEvents(chip8.key, &event); //process input and events
 
         do {
-            opcodeResult = processNextOpcode(&chip8, false);
+            opcodeResult = processNextOpcode(&chip8, enableI);
             if (SDL_GetTicks() - startTime >= FRAME_TIME) {
                 break;
             }

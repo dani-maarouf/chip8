@@ -391,7 +391,7 @@ int processNextOpcode(struct chip8System * chip8, int incrementI) {
                     break;
 
                 case 2:
-                    
+                    //FX29
                     chip8->I = 0x50 + (chip8->V[opcodeDigits[1]] * 5);
                     chip8->PC += 2;
                     break;
@@ -408,22 +408,35 @@ int processNextOpcode(struct chip8System * chip8, int incrementI) {
                 case 5:
 
                     for (int x = 0; x <= opcodeDigits[1]; x++) {
-                        chip8->RAM[chip8->I + x] = chip8->V[x];
+
                         if (incrementI) {
+                            chip8->RAM[chip8->I] = chip8->V[x];
                             chip8->I += 1;
+                        } else {
+                            chip8->RAM[chip8->I + x] = chip8->V[x];
                         }
+                        
+
                     }
+
                     chip8->PC += 2;
                     break;
 
                 case 6:
                     for (int x = 0; x <= opcodeDigits[1]; x++) {
-                        chip8->V[x] = chip8->RAM[chip8->I + x];
 
                         if (incrementI) {
+                            chip8->V[x] = chip8->RAM[chip8->I];
                             chip8->I += 1;
+                        } else {
+                            chip8->V[x] = chip8->RAM[chip8->I + x];
                         }
+                        
+
+
                     }
+
+
                     chip8->PC += 2;
                     break;
             }
