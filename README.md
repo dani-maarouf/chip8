@@ -26,6 +26,10 @@ Install with `make mac`
 
 Run with `./chip8 ROM`
 
+#### Windows
+
+Cross-compile using 
+
 ## Sample screenshots
 
 ![alt text](http://i.imgur.com/dWVxIf3.png "Pong")
@@ -34,6 +38,8 @@ Run with `./chip8 ROM`
 
 ## Notes
 
-Audio works intermittently in cases where sound timer is set for a single frame on platforms other than Mac. This can be observed in the BRIX game. Maybe related to rapidly pausing and unpausing the SDL audio device.
+Audio works intermittently in cases where sound timer is set to a small value.
+This issue mostly occurs on Windows, occasionaly on Linux and apparently not at all on Mac.
+This can be observed in BRIX and PONG. Maybe this is related to rapidly pausing and unpausing the SDL audio device.
 
 By default FX55 and FX65 will increment the I register. This can be disabled for compatibility purposes by using the -i flag
