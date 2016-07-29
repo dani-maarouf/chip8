@@ -120,7 +120,7 @@ int processNextOpcode(struct chip8System * chip8, int incrementI) {
             } else {
                 printf("Illegal opcode 0NNN\n");
                 exit(1);
-                chip8->PC += 2;
+                return 0;
             }
             break;
         }
@@ -424,18 +424,13 @@ int processNextOpcode(struct chip8System * chip8, int incrementI) {
 
                 case 6:
                     for (int x = 0; x <= opcodeDigits[1]; x++) {
-
                         if (incrementI) {
                             chip8->V[x] = chip8->RAM[chip8->I];
                             chip8->I += 1;
                         } else {
                             chip8->V[x] = chip8->RAM[chip8->I + x];
                         }
-                        
-
-
                     }
-
 
                     chip8->PC += 2;
                     break;
