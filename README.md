@@ -32,4 +32,6 @@ Run with `./chip8 ROM`
 
 ![alt text](http://i.imgur.com/t9B8qsA.png "Brix")
 
+## Issues
 
+Audio works intermittently in cases where sound timer is set for a single frame, such as in BRIX

@@ -19,7 +19,6 @@ const int samplingFrequency = 48000;
 const int sampleBytes = sizeof(int16_t) * 2;
 const int channels = 2;
 const SDL_AudioFormat format = AUDIO_S16LSB;
-const int toneFrequency = 512;
 const int16_t waveAmplitude = 1500;
 const int squareHalfPeriod = (48000 / 512) / 2;
 
@@ -44,8 +43,8 @@ void runLoop(struct chip8System chip8, const char * fileLoc) {
         return;
     }
 
-    SDL_PauseAudioDevice(sdlAudioDevice, 1);    //pause audio
-    topUpQueue();                               //top up audio queue with square wave bytes
+    bool audioPaused;
+    audioPaused = true;
     
     int startTime;
     startTime = SDL_GetTicks();
@@ -60,20 +59,14 @@ void runLoop(struct chip8System chip8, const char * fileLoc) {
         int eventResult = processEvents(chip8.key, &event); //process input and events
 
         do {
-
-            if (SDL_GetTicks() - startTime >= FRAME_TIME) {
-                ////process input and events and decrement ST and DT at 60hz
-                eventResult = processEvents(chip8.key, &event);  
-                decrementC8Counters(&chip8);
-                startTime = SDL_GetTicks();
-            }
-
             opcodeResult = processNextOpcode(&chip8, false);
-
+            if (SDL_GetTicks() - startTime >= FRAME_TIME) {
+                break;
+            }
         } while (eventResult != 0 && opcodeResult == 1);
 
         if (eventResult == 0) {
-            //quit
+            //quitd
             break;
         }
 
@@ -83,25 +76,30 @@ void runLoop(struct chip8System chip8, const char * fileLoc) {
             break;
         }
 
-
-        draw(chip8.display);    //pixel buffer to screen
-        decrementC8Counters(&chip8);
+        topUpQueue();
 
         if (chip8.ST != 0) {
-            topUpQueue();
-            SDL_PauseAudioDevice(sdlAudioDevice, 0);    //unpause audio
+            if (audioPaused) {
+                SDL_PauseAudioDevice(sdlAudioDevice, 0);    //unpause audio
+                audioPaused = false;
+            }
+            SDL_Delay(3);
         } else {
-            SDL_PauseAudioDevice(sdlAudioDevice, 1);    //pause audio
+            if (!audioPaused) {
+                SDL_PauseAudioDevice(sdlAudioDevice, 1);    //pause audio
+                audioPaused = true;
+            }
         }
+
+        decrementC8Counters(&chip8);
+        draw(chip8.display);    //pixel buffer to screen
 
         //wait for next frame
         int frameTime = SDL_GetTicks() - startTime;
         if (frameTime < FRAME_TIME) {
             SDL_Delay(FRAME_TIME - frameTime);
         }
-        startTime = SDL_GetTicks();
-        
-        
+        startTime = SDL_GetTicks();        
     }
 
     SDL_PauseAudioDevice(sdlAudioDevice, 1);    //pause
@@ -119,7 +117,7 @@ inline static void draw(uint32_t * pixels) {
 }
 
 static inline void topUpQueue() {
-    int bytes = (samplingFrequency * sampleBytes / 10) - SDL_GetQueuedAudioSize(sdlAudioDevice);
+    int bytes = (48000 * sampleBytes) - SDL_GetQueuedAudioSize(sdlAudioDevice);
     if (bytes) {
         generateAndQueueSquare(bytes, &sampleClock, squareHalfPeriod, waveAmplitude);
     }

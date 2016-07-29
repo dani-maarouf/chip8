@@ -310,17 +310,23 @@ int processNextOpcode(struct chip8System * chip8, int incrementI) {
                         int xPos = chip8->V[opcodeDigits[1]];
 
                         int pixelLocation;
-                        pixelLocation = ((yPos + i) * C8_WIDTH + xPos + j) % (C8_WIDTH * C8_HEIGHT);
+                        pixelLocation = ((yPos + i) * C8_WIDTH + xPos + j);
 
-                        if (chip8->display[pixelLocation] != 0) {
-                            chip8->V[0xF] = 1;
+                        if (pixelLocation < C8_WIDTH * C8_HEIGHT) {
+
+                            if (chip8->display[pixelLocation] != 0) {
+                                chip8->V[0xF] = 1;
+                            }
+
+                            if (chip8->display[pixelLocation] == 0) {
+                                chip8->display[pixelLocation] = MAX_INT;
+                            } else {
+                                chip8->display[pixelLocation] = 0;
+                            }
+
                         }
 
-                        if (chip8->display[pixelLocation] == 0) {
-                            chip8->display[pixelLocation] = MAX_INT;
-                        } else {
-                            chip8->display[pixelLocation] = 0;
-                        }
+
                     }
                 }
             }

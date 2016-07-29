@@ -8,7 +8,7 @@
 int main (int argc, char ** argv) {
 
     if (argc != 2) {
-        perror("Error: Please call program with 1 argument pointing to location of ROM\n");
+        printf("Error: Please call program with 1 argument pointing to location of ROM\n");
         return 1;
     }
 
@@ -17,7 +17,7 @@ int main (int argc, char ** argv) {
     struct chip8System * chip8;
     chip8 = chip8Init(argv[1]);
     if (chip8 == NULL) {
-        perror("Error: Could not open file. Exiting\n");
+        printf("Error: Could not open file. Exiting\n");
         return 1;
     }
 

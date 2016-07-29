@@ -10,3 +10,4 @@ a.out
 *.sh
 chip8
 chip8.exe
+*.dll
