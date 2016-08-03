@@ -1,4 +1,4 @@
-CFLAGS=-Iinclude -std=c99 -Wall -Ofast
+CFLAGS=-Iinclude -std=c99 -Wall -Wextra -pedantic -std=c99 -Ofast -funroll-loops -ffast-math -frename-registers -march=native
 SRC_FILES = src/main.c src/chip8.c src/gameLoop.c
 HEADER_FILES = include/chip8.h include/gameLoop.h
 

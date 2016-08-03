@@ -3,7 +3,7 @@
 
 #include "chip8.h"
 
-const int MAX_INT = 4294967295;
+const int MAX_INT = 0xFFFFFFFF;
 
 static int readFile(const char *, uint8_t *, int);
 static void readSpritesIntoRAM(uint8_t *, int);
@@ -74,74 +74,70 @@ void decrementC8Counters(struct chip8System * chip8) {
     return;
 }
 
-int processNextOpcode(struct chip8System * chip8, int incrementI) {
+int processNextOpcode(struct chip8System * chip8, int incrementI, bool debug) {
 
-    int opcodeDigits[4] = {chip8->RAM[chip8->PC] / 16, chip8->RAM[chip8->PC] % 16,
-                                chip8->RAM[chip8->PC + 1] / 16, chip8->RAM[chip8->PC + 1] % 16};
+    uint16_t opcode = (chip8->RAM[chip8->PC] << 8) | chip8->RAM[chip8->PC + 1];
+    int nybble1 = ((opcode & 0xF000) >> 12);
+    int nybble2 = ((opcode & 0x0F00) >> 8);
+    int nybble3 = ((opcode & 0x00F0) >> 4);
+    int nybble4 = ((opcode & 0x000F));
     bool draw = false;
 
-    /*
-    printf("Executed opcode %x%x%x%x, PC:%x, I:%x, SP:%x ", opcodeDigits[0], opcodeDigits[1], 
-                   opcodeDigits[2], opcodeDigits[3], chip8->PC, chip8->I, chip8->SP);
+    if (debug) {
+        printf("Executed opcode %x%x%x%x, PC:%x, I:%x, SP:%x ", nybble1, nybble2, 
+                       nybble3, nybble4, chip8->PC, chip8->I, chip8->SP);
 
-    for (int x = 0; x < 16; x++) {
-        printf("V%x: %2x ", x, chip8->V[x]);
+        for (int x = 0; x < 16; x++) {
+            printf("V%x: %2x ", x, chip8->V[x]);
+        }
+        printf("\n");
     }
-    printf("\n");
-    */
 
-    switch (opcodeDigits[0]) {
+
+    switch (nybble1) {
+
         case 0: {
 
-            if (opcodeDigits[1] == 0) {
-                if (opcodeDigits[2] == 0xE && opcodeDigits[3] == 0x0) {
+            switch((opcode & 0x0FFF)) {
 
-                    for (int i = 0; i < C8_WIDTH * C8_HEIGHT; i++) {
-                        chip8->display[i] = 0;
-                    }
-
-                    chip8->PC += 2;
-                    draw = true;
-
-
-                } else if (opcodeDigits[2] == 0xE && opcodeDigits[3] == 0xE) {
-                   
-                   chip8->SP -= 1;
-                   chip8->PC = chip8->stack[chip8->SP];
-                   chip8->PC += 2;
-                    
-                } else {
-                    printf("Unrecognized opcode %x%x%x%x\n", opcodeDigits[0], 
-                        opcodeDigits[1], opcodeDigits[2], opcodeDigits[3]);
-                    exit(1);
-                    return 0;
+                case 0x0E0:
+                for (int i = 0; i < C8_WIDTH * C8_HEIGHT; i++) {
+                    chip8->display[i] = 0;
                 }
+                chip8->PC += 2;
+                draw = true;
+                break;
 
-            } else {
-                printf("Illegal opcode 0NNN\n");
+                case 0x0EE:
+                chip8->SP -= 1;
+                chip8->PC = chip8->stack[chip8->SP];
+                chip8->PC += 2;
+                break;
+
+                default:
+                printf("Illegal opcode 0x%x\n", opcode);
                 exit(1);
-                return 0;
             }
+
+
             break;
         }
         case 1:
-            if (opcodeDigits[1] * 0x100 + opcodeDigits[2] * 0x10 + opcodeDigits[3] == chip8->PC) {
+            if (nybble2 * 0x100 + nybble3 * 0x10 + nybble4 == chip8->PC) {
                 //endless loop
                 return 0;
             }
-            chip8->PC = opcodeDigits[1] * 0x100 + opcodeDigits[2] * 0x10 + opcodeDigits[3];
+            chip8->PC = nybble2 * 0x100 + nybble3 * 0x10 + nybble4;
             break;
             
         case 2:
-
             chip8->stack[chip8->SP] = chip8->PC;
             chip8->SP += 1;
-            chip8->PC = opcodeDigits[1] * 0x100 + opcodeDigits[2] * 0x10 + opcodeDigits[3];
+            chip8->PC = nybble2 * 0x100 + nybble3 * 0x10 + nybble4;
             break;
 
         case 3:
-
-            if (chip8->V[opcodeDigits[1]] == opcodeDigits[2] * 0x10 + opcodeDigits[3]) {
+            if (chip8->V[nybble2] == nybble3 * 0x10 + nybble4) {
                 chip8->PC += 4;
             } else {
                 chip8->PC += 2;
@@ -149,8 +145,7 @@ int processNextOpcode(struct chip8System * chip8, int incrementI) {
             break;
 
         case 4:
-
-            if (chip8->V[opcodeDigits[1]] != opcodeDigits[2] * 0x10 + opcodeDigits[3]) {
+            if (chip8->V[nybble2] != nybble3 * 0x10 + nybble4) {
                 chip8->PC += 4;
             } else {
                 chip8->PC += 2;
@@ -158,8 +153,7 @@ int processNextOpcode(struct chip8System * chip8, int incrementI) {
             break;
 
         case 5:
-
-            if (chip8->V[opcodeDigits[1]] == chip8->V[opcodeDigits[2]]) {
+            if (chip8->V[nybble2] == chip8->V[nybble3]) {
                 chip8->PC += 4;
             } else {
                 chip8->PC += 2;
@@ -167,51 +161,49 @@ int processNextOpcode(struct chip8System * chip8, int incrementI) {
             break;
 
         case 6:
-
-            chip8->V[opcodeDigits[1]] = opcodeDigits[2] * 0x10 + opcodeDigits[3];
+            chip8->V[nybble2] = nybble3 * 0x10 + nybble4;
             chip8->PC += 2;
             break;
 
         case 7:
-
-            chip8->V[opcodeDigits[1]] = (opcodeDigits[2] * 0x10 + opcodeDigits[3] + chip8->V[opcodeDigits[1]]) & 0xFF;
+            chip8->V[nybble2] = (nybble3 * 0x10 + nybble4 + chip8->V[nybble2]) & 0xFF;
             chip8->PC += 2;
             break;
 
         case 8: {
 
-            switch(opcodeDigits[3]) {
+            switch(nybble4) {
 
                 case 0:
-                    chip8->V[opcodeDigits[1]] = chip8->V[opcodeDigits[2]];
+                    chip8->V[nybble2] = chip8->V[nybble3];
                     chip8->PC += 2;
                     break;
                 case 1:
-                    chip8->V[opcodeDigits[1]] |= chip8->V[opcodeDigits[2]];
+                    chip8->V[nybble2] |= chip8->V[nybble3];
                     chip8->PC += 2;
                     break;
 
                 case 2:
-                    chip8->V[opcodeDigits[1]] &= chip8->V[opcodeDigits[2]];
+                    chip8->V[nybble2] &= chip8->V[nybble3];
                     chip8->PC += 2;
                     break;
 
                 case 3:
-                    chip8->V[opcodeDigits[1]] ^= chip8->V[opcodeDigits[2]];
+                    chip8->V[nybble2] ^= chip8->V[nybble3];
                     chip8->PC += 2;
                     break;
 
                 case 4: {
 
                     unsigned int result;
-                    result = (int) chip8->V[opcodeDigits[1]] + (int) chip8->V[opcodeDigits[2]];
+                    result = (int) chip8->V[nybble2] + (int) chip8->V[nybble3];
 
                     if (result >= 255) {
                         chip8->V[0xF] = 1;
-                        chip8->V[opcodeDigits[1]] = (chip8->V[opcodeDigits[1]] + chip8->V[opcodeDigits[2]]) & 0xFF;
+                        chip8->V[nybble2] = (chip8->V[nybble2] + chip8->V[nybble3]) & 0xFF;
                     } else {
                         chip8->V[0xF] = 0;
-                        chip8->V[opcodeDigits[1]] = (chip8->V[opcodeDigits[1]] + chip8->V[opcodeDigits[2]]) & 0xFF;
+                        chip8->V[nybble2] = (chip8->V[nybble2] + chip8->V[nybble3]) & 0xFF;
                     }
                     chip8->PC += 2;
                     break;
@@ -219,56 +211,56 @@ int processNextOpcode(struct chip8System * chip8, int incrementI) {
                 case 5: {
 
                     int result;
-                    result = (int) chip8->V[opcodeDigits[1]] - (int) chip8->V[opcodeDigits[2]];
+                    result = (int) chip8->V[nybble2] - (int) chip8->V[nybble3];
 
                     if (result >= 0) {
                         chip8->V[0xF] = 1;
-                        chip8->V[opcodeDigits[1]] = (chip8->V[opcodeDigits[1]] - chip8->V[opcodeDigits[2]]) & 0xFF;
+                        chip8->V[nybble2] = (chip8->V[nybble2] - chip8->V[nybble3]) & 0xFF;
                     } else {
                         chip8->V[0xF] = 0;
-                        chip8->V[opcodeDigits[1]] = (chip8->V[opcodeDigits[1]] - chip8->V[opcodeDigits[2]]) & 0xFF;
+                        chip8->V[nybble2] = (chip8->V[nybble2] - chip8->V[nybble3]) & 0xFF;
                     }
                     chip8->PC += 2;
                     break;
                 }
                 case 6:
                     
-                    chip8->V[0xF] = (chip8->V[opcodeDigits[2]] & 0x01) ? 1 : 0;
-                    chip8->V[opcodeDigits[1]] = chip8->V[opcodeDigits[2]] >> 1;
+                    chip8->V[0xF] = (chip8->V[nybble3] & 0x01) ? 1 : 0;
+                    chip8->V[nybble2] = chip8->V[nybble3] >> 1;
                     chip8->PC += 2;
                     break;
 
                 case 7: {
 
-                    int result = (int) chip8->V[opcodeDigits[2]] - (int) chip8->V[opcodeDigits[1]];
+                    int result = (int) chip8->V[nybble3] - (int) chip8->V[nybble2];
 
                     if (result >= 0) {
                         chip8->V[0xF] = 1;
-                        chip8->V[opcodeDigits[1]] = (chip8->V[opcodeDigits[2]] - chip8->V[opcodeDigits[1]]) & 0xFF;
+                        chip8->V[nybble2] = (chip8->V[nybble3] - chip8->V[nybble2]) & 0xFF;
                     } else {
                         chip8->V[0xF] = 0;
-                        chip8->V[opcodeDigits[1]] = (chip8->V[opcodeDigits[2]] - chip8->V[opcodeDigits[1]]) & 0xFF;
+                        chip8->V[nybble2] = (chip8->V[nybble3] - chip8->V[nybble2]) & 0xFF;
                     }
                     chip8->PC += 2;
                     
                     break;
                 }
                 case 0xE:
-
-                    chip8->V[0xF] = (chip8->V[opcodeDigits[2]] & 0x80) ? 1 : 0;
-
-                    chip8->V[opcodeDigits[1]] = chip8->V[opcodeDigits[2]] << 1;
-
+                    chip8->V[0xF] = (chip8->V[nybble3] & 0x80) ? 1 : 0;
+                    chip8->V[nybble2] = chip8->V[nybble3] << 1;
                     chip8->PC += 2;
                     break;
+
+                default:
+                printf("Illegal opcode 0x%x\n", opcode);
+                exit(1);
             }
 
             break;
         }
 
         case 9:
-
-            if (chip8->V[opcodeDigits[1]] != chip8->V[opcodeDigits[2]]) {
+            if (chip8->V[nybble2] != chip8->V[nybble3]) {
                 chip8->PC += 4;
             } else {
                 chip8->PC += 2;
@@ -276,57 +268,48 @@ int processNextOpcode(struct chip8System * chip8, int incrementI) {
             break;
 
         case 0xA:
-            chip8->I = (opcodeDigits[1] * 0x100) + (opcodeDigits[2] * 0x10) + opcodeDigits[3];
+            chip8->I = (nybble2 * 0x100) + (nybble3 * 0x10) + nybble4;
             chip8->PC += 2;
             break;
 
         case 0xB:
-
-            chip8->PC = opcodeDigits[1] * 0x100 + opcodeDigits[2] * 0x10 + opcodeDigits[3] + chip8->V[0];
+            chip8->PC = nybble2 * 0x100 + nybble3 * 0x10 + nybble4 + chip8->V[0];
             break;
 
         case 0xC: {
-
             uint8_t randomNum;
             randomNum = rand() % 256;
-
-            chip8->V[opcodeDigits[1]] = (opcodeDigits[2] * 0x10 + opcodeDigits[3]) & randomNum;
+            chip8->V[nybble2] = (nybble3 * 0x10 + nybble4) & randomNum;
             chip8->PC += 2;
-
             break;
         }
         case 0xD:
 
-            for (int i = 0; i < opcodeDigits[3]; i++) {
+            chip8->V[0xF] = 0;
+
+            for (int i = 0; i < nybble4; i++) {
 
                 unsigned int spriteRow = chip8->RAM[chip8->I + i];
-
-                chip8->V[0xF] = 0;
 
                 for (int j = 0; j < 8; j++) {
                     if ((spriteRow & (0x80 >> j)) != 0) {
                         
-                        int yPos = chip8->V[opcodeDigits[2]];
-                        int xPos = chip8->V[opcodeDigits[1]];
+                        int yPos = chip8->V[nybble3];
+                        int xPos = chip8->V[nybble2];
 
                         int pixelLocation;
                         pixelLocation = ((yPos + i) * C8_WIDTH + xPos + j);
 
                         if (pixelLocation < C8_WIDTH * C8_HEIGHT) {
 
-                            if (chip8->display[pixelLocation] != 0) {
-                                chip8->V[0xF] = 1;
-                            }
-
                             if (chip8->display[pixelLocation] == 0) {
                                 chip8->display[pixelLocation] = MAX_INT;
                             } else {
                                 chip8->display[pixelLocation] = 0;
+                                chip8->V[0xF] = 1;
                             }
 
                         }
-
-
                     }
                 }
             }
@@ -336,113 +319,103 @@ int processNextOpcode(struct chip8System * chip8, int incrementI) {
 
         case 0xE:
 
-
-
-            if (opcodeDigits[2] == 0x9) {
-                
-                if (chip8->key[chip8->V[opcodeDigits[1]]]) {
+            if (nybble3 == 0x9) {
+                if (chip8->key[chip8->V[nybble2]]) {
                     chip8->PC += 4;
                 } else {
                     chip8->PC += 2;
                 }
-
-            } else if (opcodeDigits[2] == 0xA) {
-
-                if (!chip8->key[chip8->V[opcodeDigits[1]]]) {
+            } else if (nybble3 == 0xA) {
+                if (!chip8->key[chip8->V[nybble2]]) {
                     chip8->PC += 4;
                 } else {
                     chip8->PC += 2;
                 }
-
             }
             break;
 
-        case 0XF:
+        case 0XF: {
 
-            switch(opcodeDigits[2]) {
 
-                case 0:
+            switch((opcode & 0xFF)) {
 
-                    if (opcodeDigits[3] == 7) {
-                        chip8->V[opcodeDigits[1]] = chip8->DT;
+                case 0x07:
+                chip8->V[nybble2] = chip8->DT;
+                chip8->PC += 2;
+                break;
+
+                case 0x0A:
+                for (int x = 0; x < 0x10; x++) {
+                    if (chip8->key[x]) {
+                        chip8->V[nybble2] = x;
                         chip8->PC += 2;
-                    } else if (opcodeDigits[3] == 0xA) {
-
-                        for (int x = 0; x < 0x10; x++) {
-                            if (chip8->key[x]) {
-                                chip8->V[opcodeDigits[1]] = x;
-                                chip8->PC += 2;
-                                break;
-                            }
-                        }
-                        return 3;
+                        break;
                     }
-                    break;
-
-                case 1:
-                    if (opcodeDigits[3] == 5) {
-                        chip8->DT = chip8->V[opcodeDigits[1]];
-                    } else if (opcodeDigits[3] == 8) {
-                        chip8->ST = chip8->V[opcodeDigits[1]];
-                    } else if (opcodeDigits[3] == 0xE) {
-                        chip8->I = (chip8->V[opcodeDigits[1]] + chip8->I) & 0xFFFF;
-                    }
-                    chip8->PC += 2;
-                    break;
-
-                case 2:
-                    //FX29
-                    chip8->I = 0x50 + (chip8->V[opcodeDigits[1]] * 5);
-                    chip8->PC += 2;
-                    break;
-
-                case 3: {
-
-                    chip8->RAM[chip8->I] = chip8->V[opcodeDigits[1]] / 100;
-                    chip8->RAM[chip8->I + 1] = ((chip8->V[opcodeDigits[1]]) % 100) / 10;
-                    chip8->RAM[chip8->I + 2] = chip8->V[opcodeDigits[1]] % 10;
-
-                    chip8->PC += 2;
-                    break;
                 }
-                case 5:
+                return 3;
 
-                    for (int x = 0; x <= opcodeDigits[1]; x++) {
+                case 0x15:
+                chip8->DT = chip8->V[nybble2];
+                chip8->PC += 2;
+                break;
 
-                        if (incrementI) {
-                            chip8->RAM[chip8->I] = chip8->V[x];
-                            chip8->I += 1;
-                        } else {
-                            chip8->RAM[chip8->I + x] = chip8->V[x];
-                        }
-                        
+                case 0x18:
+                chip8->ST = chip8->V[nybble2];
+                chip8->PC += 2;
+                break;
 
+                case 0x1E:
+                chip8->I = (chip8->V[nybble2] + chip8->I) & 0xFFFF;
+                chip8->PC += 2;
+                break;
+
+                case 0x29:
+                chip8->I = 0x50 + (chip8->V[nybble2] * 5);
+                chip8->PC += 2;
+                break;
+
+                case 0x33:
+                chip8->RAM[chip8->I] = chip8->V[nybble2] / 100;
+                chip8->RAM[chip8->I + 1] = ((chip8->V[nybble2]) % 100) / 10;
+                chip8->RAM[chip8->I + 2] = chip8->V[nybble2] % 10;
+                chip8->PC += 2;
+                break;
+
+                case 0x55:
+                for (int x = 0; x <= nybble2; x++) {
+                    if (incrementI) {
+                        chip8->RAM[chip8->I] = chip8->V[x];
+                        chip8->I += 1;
+                    } else {
+                        chip8->RAM[chip8->I + x] = chip8->V[x];
                     }
+                }
+                chip8->PC += 2;
+                break;
 
-                    chip8->PC += 2;
-                    break;
-
-                case 6:
-                    for (int x = 0; x <= opcodeDigits[1]; x++) {
-                        if (incrementI) {
-                            chip8->V[x] = chip8->RAM[chip8->I];
-                            chip8->I += 1;
-                        } else {
-                            chip8->V[x] = chip8->RAM[chip8->I + x];
-                        }
+                case 0x65:
+                for (int x = 0; x <= nybble2; x++) {
+                    if (incrementI) {
+                        chip8->V[x] = chip8->RAM[chip8->I];
+                        chip8->I += 1;
+                    } else {
+                        chip8->V[x] = chip8->RAM[chip8->I + x];
                     }
+                }
+                chip8->PC += 2;
+                break;
 
-                    chip8->PC += 2;
-                    break;
+                default:
+                printf("Illegal opcode 0x%x\n", opcode);
+                exit(1);
             }
 
             break;
+        }
 
         default:
-            printf("Warning: Unrecognized opcode %x%x%x%x\n", opcodeDigits[0], 
-                    opcodeDigits[1], opcodeDigits[2], opcodeDigits[3]);
+            printf("Illegal opcode 0x%x\n", opcode);
             exit(1);
-            break;
     }
 
     if (draw) {
