@@ -46,7 +46,7 @@ void runLoop(struct chip8System chip8, const char * fileLoc, int enableI) {
     draw(chip8.display);                        //first frame
     SDL_PauseAudioDevice(sdlAudioDevice, 0);    //unpause audio
 
-    while (true) {
+    for(;;) {
 
         if (!processEvents(chip8.key, &event)) {
             break;
@@ -55,7 +55,7 @@ void runLoop(struct chip8System chip8, const char * fileLoc, int enableI) {
         int opcodeResult;
         int x = 0;
         do {
-            opcodeResult = processNextOpcode(&chip8, enableI, true);
+            opcodeResult = processNextOpcode(&chip8, enableI, 0);
             x++;
         } while (opcodeResult == 1 && x < 1000);
 
