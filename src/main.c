@@ -37,6 +37,7 @@ int main (int argc, char ** argv) {
             romLocation = argv[1];
             enableI = 2;
         } else {
+            printf("Program arguments not recognized\n");
             return 1;
         }
 

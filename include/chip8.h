@@ -18,7 +18,7 @@ struct chip8System {
     uint16_t DT;            //delay timer
     uint16_t ST;            //sound timer
     uint16_t PC;            //program counter
-    uint8_t SP;             //stasck pointer
+    uint8_t SP;             //stack pointer
 
 };
 

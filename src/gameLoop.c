@@ -57,7 +57,7 @@ void runLoop(struct chip8System chip8, const char * fileLoc, int enableI) {
         do {
             opcodeResult = processNextOpcode(&chip8, enableI, 0);
             x++;
-        } while (opcodeResult == 1 && x < 1000);
+        } while (opcodeResult == 1 && x < 50000);
 
         if (opcodeResult == 0) {
             //infinite chip8 loop

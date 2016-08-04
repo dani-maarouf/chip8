@@ -197,7 +197,7 @@ int processNextOpcode(struct chip8System * chip8, int incrementI, int debug) {
 
                     unsigned int result = (int) chip8->V[nybble2] + (int) chip8->V[nybble3];
 
-                    if (result > 256) {
+                    if (result > 255) {
                         chip8->V[0xF] = 1;
                     } else {
                         chip8->V[0xF] = 0;
