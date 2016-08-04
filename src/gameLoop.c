@@ -32,7 +32,7 @@ static inline void draw(uint32_t * pixels);
 static inline void generateAndQueueSquare(int bytesToQueue, uint64_t * clock, int period, int volume);
 static inline void topUpQueue(int);
 
-void runLoop(struct chip8System chip8, const char * fileLoc, bool enableI) {
+void runLoop(struct chip8System chip8, const char * fileLoc, int enableI) {
 
     if (!initSDL(fileLoc)) {
         fprintf(stderr, "Could not initialize SDL : %s\n", SDL_GetError());
@@ -55,7 +55,7 @@ void runLoop(struct chip8System chip8, const char * fileLoc, bool enableI) {
         int opcodeResult;
         int x = 0;
         do {
-            opcodeResult = processNextOpcode(&chip8, enableI, false);
+            opcodeResult = processNextOpcode(&chip8, enableI, true);
             x++;
         } while (opcodeResult == 1 && x < 1000);
 

@@ -74,7 +74,7 @@ void decrementC8Counters(struct chip8System * chip8) {
     return;
 }
 
-int processNextOpcode(struct chip8System * chip8, int incrementI, bool debug) {
+int processNextOpcode(struct chip8System * chip8, int incrementI, int debug) {
 
     uint16_t opcode = (chip8->RAM[chip8->PC] << 8) | chip8->RAM[chip8->PC + 1];
     int nybble1 = ((opcode & 0xF000) >> 12);
@@ -84,12 +84,12 @@ int processNextOpcode(struct chip8System * chip8, int incrementI, bool debug) {
     bool draw = false;
 
     if (debug) {
-        printf("Executed opcode %x%x%x%x, PC:%x, I:%x, SP:%x ", nybble1, nybble2, 
-                       nybble3, nybble4, chip8->PC, chip8->I, chip8->SP);
+        printf("0x%x\t%x%x%x%x, I:%x, SP:%x ", chip8->PC, nybble1, nybble2, 
+                       nybble3, nybble4, chip8->I, chip8->SP);
 
-        for (int x = 0; x < 16; x++) {
-            printf("V%x: %2x ", x, chip8->V[x]);
-        }
+        //for (int x = 0; x < 16; x++) {
+        //    printf("V%x: %2x ", x, chip8->V[x]);
+        //}
         printf("\n");
     }
 
@@ -100,7 +100,7 @@ int processNextOpcode(struct chip8System * chip8, int incrementI, bool debug) {
 
             switch((opcode & 0x0FFF)) {
 
-                case 0x0E0:
+                case 0x0E0:     //CLS
                 for (int i = 0; i < C8_WIDTH * C8_HEIGHT; i++) {
                     chip8->display[i] = 0;
                 }
@@ -108,7 +108,7 @@ int processNextOpcode(struct chip8System * chip8, int incrementI, bool debug) {
                 draw = true;
                 break;
 
-                case 0x0EE:
+                case 0x0EE:     //RET
                 chip8->SP -= 1;
                 chip8->PC = chip8->stack[chip8->SP];
                 chip8->PC += 2;
@@ -122,37 +122,37 @@ int processNextOpcode(struct chip8System * chip8, int incrementI, bool debug) {
 
             break;
         }
-        case 1:
-            if (nybble2 * 0x100 + nybble3 * 0x10 + nybble4 == chip8->PC) {
+        case 1:     //JP addr
+            if ((opcode & 0x0FFF) == chip8->PC) {
                 //endless loop
                 return 0;
             }
-            chip8->PC = nybble2 * 0x100 + nybble3 * 0x10 + nybble4;
+            chip8->PC = (opcode & 0x0FFF);
             break;
             
-        case 2:
+        case 2:     //CALL addr
             chip8->stack[chip8->SP] = chip8->PC;
             chip8->SP += 1;
-            chip8->PC = nybble2 * 0x100 + nybble3 * 0x10 + nybble4;
+            chip8->PC = (opcode & 0x0FFF);
             break;
 
-        case 3:
-            if (chip8->V[nybble2] == nybble3 * 0x10 + nybble4) {
+        case 3:     //SE Vx, byte
+            if (chip8->V[nybble2] == (opcode & 0xFF)) {
                 chip8->PC += 4;
             } else {
                 chip8->PC += 2;
             }
             break;
 
-        case 4:
-            if (chip8->V[nybble2] != nybble3 * 0x10 + nybble4) {
+        case 4:     //SNE Vx, byte
+            if (chip8->V[nybble2] != (opcode & 0xFF)) {
                 chip8->PC += 4;
             } else {
                 chip8->PC += 2;
             }
             break;
 
-        case 5:
+        case 5:     //SE Vx, Vy
             if (chip8->V[nybble2] == chip8->V[nybble3]) {
                 chip8->PC += 4;
             } else {
@@ -160,13 +160,13 @@ int processNextOpcode(struct chip8System * chip8, int incrementI, bool debug) {
             }
             break;
 
-        case 6:
-            chip8->V[nybble2] = nybble3 * 0x10 + nybble4;
+        case 6:     //LD Vx, byte
+            chip8->V[nybble2] = ((opcode & 0xFF));
             chip8->PC += 2;
             break;
 
-        case 7:
-            chip8->V[nybble2] = (nybble3 * 0x10 + nybble4 + chip8->V[nybble2]) & 0xFF;
+        case 7:     //ADD Vx, byte
+            chip8->V[nybble2] = ((opcode & 0xFF) + chip8->V[nybble2]) & 0xFF;
             chip8->PC += 2;
             break;
 
@@ -174,41 +174,39 @@ int processNextOpcode(struct chip8System * chip8, int incrementI, bool debug) {
 
             switch(nybble4) {
 
-                case 0:
+                case 0: //LD Vx, Vy
                     chip8->V[nybble2] = chip8->V[nybble3];
                     chip8->PC += 2;
                     break;
-                case 1:
+                case 1: //OR Vx, Vy
                     chip8->V[nybble2] |= chip8->V[nybble3];
                     chip8->PC += 2;
                     break;
 
-                case 2:
+                case 2: //AND Vx, Vy
                     chip8->V[nybble2] &= chip8->V[nybble3];
                     chip8->PC += 2;
                     break;
 
-                case 3:
+                case 3: //XOR Vx, Vy
                     chip8->V[nybble2] ^= chip8->V[nybble3];
                     chip8->PC += 2;
                     break;
 
-                case 4: {
+                case 4: {   //ADD Vx, Vy
 
-                    unsigned int result;
-                    result = (int) chip8->V[nybble2] + (int) chip8->V[nybble3];
+                    unsigned int result = (int) chip8->V[nybble2] + (int) chip8->V[nybble3];
 
-                    if (result >= 255) {
+                    if (result > 256) {
                         chip8->V[0xF] = 1;
-                        chip8->V[nybble2] = (chip8->V[nybble2] + chip8->V[nybble3]) & 0xFF;
                     } else {
                         chip8->V[0xF] = 0;
-                        chip8->V[nybble2] = (chip8->V[nybble2] + chip8->V[nybble3]) & 0xFF;
                     }
+                    chip8->V[nybble2] = (chip8->V[nybble2] + chip8->V[nybble3]) & 0xFF;
                     chip8->PC += 2;
                     break;
                 }
-                case 5: {
+                case 5: {   //SUB Vx, Vy
 
                     int result;
                     result = (int) chip8->V[nybble2] - (int) chip8->V[nybble3];
@@ -223,14 +221,14 @@ int processNextOpcode(struct chip8System * chip8, int incrementI, bool debug) {
                     chip8->PC += 2;
                     break;
                 }
-                case 6:
+                case 6: //SHR Vx {, Vy}
                     
-                    chip8->V[0xF] = (chip8->V[nybble3] & 0x01) ? 1 : 0;
-                    chip8->V[nybble2] = chip8->V[nybble3] >> 1;
+                    chip8->V[0xF] = (chip8->V[nybble2] & 0x01) ? 1 : 0;
+                    chip8->V[nybble2] = chip8->V[nybble2] >> 1;
                     chip8->PC += 2;
                     break;
 
-                case 7: {
+                case 7: {   //SUBN Vx, Vy
 
                     int result = (int) chip8->V[nybble3] - (int) chip8->V[nybble2];
 
@@ -244,10 +242,11 @@ int processNextOpcode(struct chip8System * chip8, int incrementI, bool debug) {
                     chip8->PC += 2;
                     
                     break;
+
                 }
-                case 0xE:
-                    chip8->V[0xF] = (chip8->V[nybble3] & 0x80) ? 1 : 0;
-                    chip8->V[nybble2] = chip8->V[nybble3] << 1;
+                case 0xE:   //SHL Vx {, Vy}
+                    chip8->V[0xF] = (chip8->V[nybble2] & 0x80) ? 1 : 0;
+                    chip8->V[nybble2] = chip8->V[nybble2] << 1;
                     chip8->PC += 2;
                     break;
 
@@ -259,7 +258,7 @@ int processNextOpcode(struct chip8System * chip8, int incrementI, bool debug) {
             break;
         }
 
-        case 9:
+        case 9: //SNE Vx, Vy
             if (chip8->V[nybble2] != chip8->V[nybble3]) {
                 chip8->PC += 4;
             } else {
@@ -267,23 +266,22 @@ int processNextOpcode(struct chip8System * chip8, int incrementI, bool debug) {
             }
             break;
 
-        case 0xA:
-            chip8->I = (nybble2 * 0x100) + (nybble3 * 0x10) + nybble4;
+        case 0xA:   //LD I, addr
+            chip8->I = (opcode & 0x0FFF);
             chip8->PC += 2;
             break;
 
-        case 0xB:
-            chip8->PC = nybble2 * 0x100 + nybble3 * 0x10 + nybble4 + chip8->V[0];
+        case 0xB:   //JP V0, addr
+            chip8->PC = ((opcode & 0x0FFF) + chip8->V[0]);
             break;
 
-        case 0xC: {
-            uint8_t randomNum;
-            randomNum = rand() % 256;
-            chip8->V[nybble2] = (nybble3 * 0x10 + nybble4) & randomNum;
+        case 0xC: { //RND Vx, byte
+            uint8_t randomNum = rand() % 256;
+            chip8->V[nybble2] = ((opcode & 0xFF) & randomNum);
             chip8->PC += 2;
             break;
         }
-        case 0xD:
+        case 0xD:   //DRW Vx, Vy, nibble
 
             chip8->V[0xF] = 0;
 
@@ -296,9 +294,7 @@ int processNextOpcode(struct chip8System * chip8, int incrementI, bool debug) {
                         
                         int yPos = chip8->V[nybble3];
                         int xPos = chip8->V[nybble2];
-
-                        int pixelLocation;
-                        pixelLocation = ((yPos + i) * C8_WIDTH + xPos + j);
+                        int pixelLocation = ((yPos + i) * C8_WIDTH + xPos + j);
 
                         if (pixelLocation < C8_WIDTH * C8_HEIGHT) {
 
@@ -319,13 +315,13 @@ int processNextOpcode(struct chip8System * chip8, int incrementI, bool debug) {
 
         case 0xE:
 
-            if (nybble3 == 0x9) {
+            if (nybble3 == 0x9) {   //SKP Vx
                 if (chip8->key[chip8->V[nybble2]]) {
                     chip8->PC += 4;
                 } else {
                     chip8->PC += 2;
                 }
-            } else if (nybble3 == 0xA) {
+            } else if (nybble3 == 0xA) {    //SKNP Vx
                 if (!chip8->key[chip8->V[nybble2]]) {
                     chip8->PC += 4;
                 } else {
@@ -339,12 +335,12 @@ int processNextOpcode(struct chip8System * chip8, int incrementI, bool debug) {
 
             switch((opcode & 0xFF)) {
 
-                case 0x07:
+                case 0x07:  //LD Vx, DT
                 chip8->V[nybble2] = chip8->DT;
                 chip8->PC += 2;
                 break;
 
-                case 0x0A:
+                case 0x0A:  //LD Vx, K
                 for (int x = 0; x < 0x10; x++) {
                     if (chip8->key[x]) {
                         chip8->V[nybble2] = x;
@@ -354,53 +350,55 @@ int processNextOpcode(struct chip8System * chip8, int incrementI, bool debug) {
                 }
                 return 3;
 
-                case 0x15:
+                case 0x15:  //LD DT, Vx
                 chip8->DT = chip8->V[nybble2];
                 chip8->PC += 2;
                 break;
 
-                case 0x18:
+                case 0x18:  //LD ST, Vx
                 chip8->ST = chip8->V[nybble2];
                 chip8->PC += 2;
                 break;
 
-                case 0x1E:
+                case 0x1E:  //ADD I, Vx
                 chip8->I = (chip8->V[nybble2] + chip8->I) & 0xFFFF;
                 chip8->PC += 2;
                 break;
 
-                case 0x29:
+                case 0x29:  //LD F, Vx
                 chip8->I = 0x50 + (chip8->V[nybble2] * 5);
                 chip8->PC += 2;
                 break;
 
-                case 0x33:
+                case 0x33:  //LD B, Vx
                 chip8->RAM[chip8->I] = chip8->V[nybble2] / 100;
                 chip8->RAM[chip8->I + 1] = ((chip8->V[nybble2]) % 100) / 10;
                 chip8->RAM[chip8->I + 2] = chip8->V[nybble2] % 10;
                 chip8->PC += 2;
                 break;
 
-                case 0x55:
+                case 0x55:  //LD [I], Vx
                 for (int x = 0; x <= nybble2; x++) {
-                    if (incrementI) {
-                        chip8->RAM[chip8->I] = chip8->V[x];
-                        chip8->I += 1;
-                    } else {
-                        chip8->RAM[chip8->I + x] = chip8->V[x];
-                    }
+                    chip8->RAM[chip8->I + x] = chip8->V[x];
                 }
+
+                if (incrementI == 1) {
+                    chip8->I += nybble2;
+                } else if (incrementI == 2) {
+                    chip8->I += nybble2 + 1;
+                }
+
                 chip8->PC += 2;
                 break;
 
-                case 0x65:
+                case 0x65:  //LD Vx, [I]
                 for (int x = 0; x <= nybble2; x++) {
-                    if (incrementI) {
-                        chip8->V[x] = chip8->RAM[chip8->I];
-                        chip8->I += 1;
-                    } else {
-                        chip8->V[x] = chip8->RAM[chip8->I + x];
-                    }
+                    chip8->V[x] = chip8->RAM[chip8->I + x];
+                }
+                if (incrementI == 1) {
+                    chip8->I += nybble2;
+                } else if (incrementI == 2) {
+                    chip8->I += nybble2 + 1;
                 }
                 chip8->PC += 2;
                 break;
